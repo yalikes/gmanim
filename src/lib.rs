@@ -38,27 +38,71 @@ impl Default for SceneConfig {
 }
 
 trait SimpleMove {
-    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {}
+    fn move_this(&mut self, movement: ndarray::Array1<f32>) {}
 }
 
 impl SimpleMove for SimpleLine {
-    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {
+    fn move_this(&mut self, movement: ndarray::Array1<f32>) {
         self.p0 = self.p0.clone() + movement.clone();
         self.p1 = self.p1.clone() + movement.clone();
     }
 }
 
-impl SimpleMove for PolyLine{
-    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {
-        for i in 0..self.points.len(){
+impl SimpleMove for PolyLine {
+    fn move_this(&mut self, movement: ndarray::Array1<f32>) {
+        for i in 0..self.points.len() {
             self.points[i] = self.points[i].clone() + movement.clone();
         }
     }
 }
 
 impl SimpleMove for Rectangle {
-    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {
+    fn move_this(&mut self, movement: ndarray::Array1<f32>) {
         self.position = self.position.clone() + movement;
+    }
+}
+trait Rotate {
+    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32);
+}
+
+impl Rotate for SimpleLine {
+    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32) {}
+}
+
+trait Mobject: Rotate + SimpleMove + Draw {}
+
+impl Mobject for SimpleLine {}
+
+#[derive(Default)]
+struct Scene {
+    mobjects: Vec<Box<dyn Mobject>>,
+}
+
+impl Scene {
+    fn new() -> Self {
+        Scene { mobjects: vec![] }
+    }
+    fn save_png(&self, ctx: &Context, file_path: &str) {
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(file_path)
+            .unwrap();
+
+        ctx.clear_transparent();
+
+        match &ctx.ctx_type {
+            ContextType::CAIRO(c) => {
+                for m in &self.mobjects {
+                    m.draw(ctx);
+                }
+                c.target().write_to_png(&mut f);
+            }
+            _ => {}
+        }
+    }
+    fn add(&mut self, mobject: Box<dyn Mobject>) {
+        self.mobjects.push(mobject);
     }
 }
 
@@ -81,15 +125,12 @@ impl Default for Context {
 }
 
 impl Context {
-    pub fn save_png(self: &Self, file_path: &str) {
+    fn clear_transparent(&self) {
         match &self.ctx_type {
             ContextType::CAIRO(c) => {
-                let mut f = std::fs::OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .open(file_path)
-                    .unwrap();
-                c.target().write_to_png(&mut f);
+                c.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+                c.set_operator(cairo::Operator::Source);
+                c.paint();
             }
             _ => {}
         }
@@ -97,7 +138,7 @@ impl Context {
 }
 pub trait Draw {
     //draw shape without fill
-    fn draw(self: &Self, ctx: &Context);
+    fn draw(&self, ctx: &Context);
 }
 
 struct PolyLine {
@@ -216,9 +257,21 @@ impl Draw for Rectangle {
     }
 }
 
+impl Rotate for PolyLine {
+    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32) {}
+}
+
+impl Rotate for Rectangle {
+    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32) {}
+}
+
+impl Mobject for PolyLine {}
+
+impl Mobject for Rectangle {}
 #[test]
 fn test_simple_line_image() {
     let ctx = Context::default();
+    let mut scene = Scene::new();
     let simple_line = SimpleLine {
         stroke_width: 0.2,
         p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
@@ -229,14 +282,15 @@ fn test_simple_line_image() {
         p0: ndarray::arr1(&[1.0, 1.0, 0.0]),
         p1: ndarray::arr1(&[5.0, 2.0, 0.0]),
     };
-    simple_line.draw(&ctx);
-    simple_line2.draw(&ctx);
-    ctx.save_png("simple_line.png");
+    scene.add(Box::new(simple_line));
+    scene.add(Box::new(simple_line2));
+    scene.save_png(&ctx, "simple_line.png");
 }
 
 #[test]
 fn test_polyline_image() {
     let ctx = Context::default();
+    let mut scene = Scene::new();
     let polyline = PolyLine {
         stroke_width: 0.2,
         points: vec![
@@ -247,19 +301,20 @@ fn test_polyline_image() {
             ndarray::arr1(&[6.0, 4.5]),
         ],
     };
-    polyline.draw(&ctx);
-    ctx.save_png("polyline.png");
+    scene.add(Box::new(polyline));
+    scene.save_png(&ctx, "poly_line.png");
 }
 
 #[test]
 fn test_rectangle_image() {
     let ctx = Context::default();
-    let polyline = Rectangle {
+    let mut scene = Scene::new();
+    let rectangle = Rectangle {
         stroke_width: 0.2,
         position: ndarray::arr1(&[0.0, 0.0, 0.0]),
         width: 3.0,
         height: 3.0,
     };
-    polyline.draw(&ctx);
-    ctx.save_png("rectangle.png");
+    scene.add(Box::new(rectangle));
+    scene.save_png(&ctx, "rectangle.png");
 }
