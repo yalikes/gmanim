@@ -37,6 +37,31 @@ impl Default for SceneConfig {
     }
 }
 
+trait SimpleMove {
+    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {}
+}
+
+impl SimpleMove for SimpleLine {
+    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {
+        self.p0 = self.p0.clone() + movement.clone();
+        self.p1 = self.p1.clone() + movement.clone();
+    }
+}
+
+impl SimpleMove for PolyLine{
+    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {
+        for i in 0..self.points.len(){
+            self.points[i] = self.points[i].clone() + movement.clone();
+        }
+    }
+}
+
+impl SimpleMove for Rectangle {
+    fn move_with<T>(self: &mut Self, movement: ndarray::Array1<f32>) {
+        self.position = self.position.clone() + movement;
+    }
+}
+
 impl Default for Context {
     fn default() -> Self {
         let scene_config = SceneConfig::default();
@@ -75,26 +100,20 @@ pub trait Draw {
     fn draw(self: &Self, ctx: &Context);
 }
 
-type Vec2f = Vec2<f32>;
-struct Vec2<T> {
-    x: T,
-    y: T,
-}
-
 struct PolyLine {
     stroke_width: f32,
-    points: Vec<Vec2f>,
+    points: Vec<ndarray::Array1<f32>>,
 }
 
 struct SimpleLine {
     stroke_width: f32,
-    p0: Vec2f,
-    p1: Vec2f,
+    p0: ndarray::Array1<f32>,
+    p1: ndarray::Array1<f32>,
 }
 
 struct Rectangle {
     stroke_width: f32,
-    position: Vec2f,
+    position: ndarray::Array1<f32>,
     width: f32,
     height: f32,
 }
@@ -118,12 +137,16 @@ impl Draw for SimpleLine {
                 c.set_line_cap(cairo::LineCap::Butt);
                 c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
                 c.move_to(
-                    (coordinate_change_x(self.p0.x, ctx.scene_config.width) * scale_factor).into(),
-                    (coordinate_change_y(self.p0.y, ctx.scene_config.height) * scale_factor).into(),
+                    (coordinate_change_x(self.p0[[0]], ctx.scene_config.width) * scale_factor)
+                        .into(),
+                    (coordinate_change_y(self.p0[[1]], ctx.scene_config.height) * scale_factor)
+                        .into(),
                 );
                 c.line_to(
-                    (coordinate_change_x(self.p1.x, ctx.scene_config.width) * scale_factor).into(),
-                    (coordinate_change_y(self.p1.y, ctx.scene_config.height) * scale_factor).into(),
+                    (coordinate_change_x(self.p1[[0]], ctx.scene_config.width) * scale_factor)
+                        .into(),
+                    (coordinate_change_y(self.p1[[1]], ctx.scene_config.height) * scale_factor)
+                        .into(),
                 );
                 c.stroke().unwrap();
             }
@@ -144,19 +167,19 @@ impl Draw for PolyLine {
                 c.set_line_cap(cairo::LineCap::Butt);
                 c.set_line_join(cairo::LineJoin::Round);
                 c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
-                println!("{}",coordinate_change_x(self.points[0].x, ctx.scene_config.width));
-                println!("{}",coordinate_change_x(self.points[0].x, ctx.scene_config.width) * scale_factor);
                 c.move_to(
-                    (coordinate_change_x(self.points[0].x, ctx.scene_config.width) * scale_factor)
+                    (coordinate_change_x(self.points[0][[0]], ctx.scene_config.width)
+                        * scale_factor)
                         .into(),
-                    (coordinate_change_y(self.points[0].y, ctx.scene_config.height)
+                    (coordinate_change_y(self.points[0][[1]], ctx.scene_config.height)
                         * ctx.scene_config.scale_factor)
                         .into(),
                 );
                 for p in self.points[1..].iter() {
                     c.line_to(
-                        (coordinate_change_x(p.x, ctx.scene_config.width) * scale_factor).into(),
-                        (coordinate_change_y(p.y, ctx.scene_config.height) * scale_factor).into(),
+                        (coordinate_change_x(p[[0]], ctx.scene_config.width) * scale_factor).into(),
+                        (coordinate_change_y(p[[1]], ctx.scene_config.height) * scale_factor)
+                            .into(),
                     );
                 }
                 c.stroke().unwrap();
@@ -177,9 +200,11 @@ impl Draw for Rectangle {
                 c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
 
                 c.rectangle(
-                    (coordinate_change_x(self.position.x, ctx.scene_config.width) * scale_factor)
+                    (coordinate_change_x(self.position[[0]], ctx.scene_config.width)
+                        * scale_factor)
                         .into(),
-                    (coordinate_change_x(self.position.y, ctx.scene_config.height) * scale_factor)
+                    (coordinate_change_x(self.position[[1]], ctx.scene_config.height)
+                        * scale_factor)
                         .into(),
                     (self.width * scale_factor).into(),
                     (self.height * scale_factor).into(),
@@ -196,13 +221,13 @@ fn test_simple_line_image() {
     let ctx = Context::default();
     let simple_line = SimpleLine {
         stroke_width: 0.2,
-        p0: Vec2 { x: 0.0, y: 0.0 },
-        p1: Vec2 { x: 1.0, y: 1.0 },
+        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
+        p1: ndarray::arr1(&[1.0, 1.0, 0.0]),
     };
     let simple_line2 = SimpleLine {
         stroke_width: 0.2,
-        p0: Vec2 { x: 1.0, y: 1.0 },
-        p1: Vec2 { x: 5.0, y: 2.0 },
+        p0: ndarray::arr1(&[1.0, 1.0, 0.0]),
+        p1: ndarray::arr1(&[5.0, 2.0, 0.0]),
     };
     simple_line.draw(&ctx);
     simple_line2.draw(&ctx);
@@ -215,11 +240,11 @@ fn test_polyline_image() {
     let polyline = PolyLine {
         stroke_width: 0.2,
         points: vec![
-            Vec2 { x: 0.0, y: 0.0 },
-            Vec2 { x: 3.5, y: 1.0 },
-            Vec2 { x: 3.5, y: 3.5 },
-            Vec2 { x: 4.0, y: 4.5 },
-            Vec2 { x: 6.0, y: 4.5 },
+            ndarray::arr1(&[0.0, 0.0]),
+            ndarray::arr1(&[3.5, 1.0]),
+            ndarray::arr1(&[3.5, 3.5]),
+            ndarray::arr1(&[4.0, 4.5]),
+            ndarray::arr1(&[6.0, 4.5]),
         ],
     };
     polyline.draw(&ctx);
@@ -231,7 +256,7 @@ fn test_rectangle_image() {
     let ctx = Context::default();
     let polyline = Rectangle {
         stroke_width: 0.2,
-        position: Vec2 { x: 0.0, y: 0.0 },
+        position: ndarray::arr1(&[0.0, 0.0, 0.0]),
         width: 3.0,
         height: 3.0,
     };

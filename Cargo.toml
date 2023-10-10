@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 cairo-rs = {version = "0.18", features = ["png", "svg"]}
+ndarray = {version = "0.15", features = ["serde", "blas"]}
+blas-src = { version = "0.8", features = ["openblas"] }
+openblas-src = { version = "0.10", features = ["cblas", "system"] }
