@@ -136,6 +136,21 @@ impl Context {
             _ => {}
         }
     }
+
+    // of cause this is a big cost, but i don't know how to optimize here.
+    fn image_bytes(&self) -> Vec<u8>{
+        match &self.ctx_type {
+            ContextType::CAIRO(c) => {
+                let s = c.target().map_to_image(None).unwrap();
+                let mut img = s.map_to_image(None).unwrap().to_owned();
+                let data = img.data().unwrap();
+                data.to_vec()
+            }
+            _ => {
+                vec![]
+            }
+        }
+    }
 }
 pub trait Draw {
     //draw shape without fill
@@ -318,4 +333,24 @@ fn test_rectangle_image() {
     };
     scene.add(Box::new(rectangle));
     scene.save_png(&ctx, "rectangle.png");
+}
+
+#[test]
+fn write_frame(){
+    let ctx = Context::default();
+    let mut scene = Scene::new();
+    let rectangle = Rectangle {
+        stroke_width: 0.2,
+        position: ndarray::arr1(&[0.0, 0.0, 0.0]),
+        width: 3.0,
+        height: 3.0,
+    };
+    scene.add(Box::new(rectangle));
+    for m in scene.mobjects{
+        m.draw(&ctx);
+    }
+    let bytes = ctx.image_bytes();
+    let mut f = std::fs::OpenOptions::new().write(true).create(true).open("frame.rgba").unwrap();
+    use std::io::Write;
+    f.write_all(&bytes).unwrap();
 }
