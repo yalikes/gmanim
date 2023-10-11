@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cairo-rs = {version = "0.18", features = ["png", "svg"]}
+raqote = "0.8"
+
 ndarray = {version = "0.15", features = ["serde", "blas"]}
 blas-src = { version = "0.8", features = ["openblas"] }
 openblas-src = { version = "0.10", features = ["cblas", "system"] }

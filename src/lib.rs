@@ -7,7 +7,7 @@ struct Color {
     b: f32,
 }
 pub enum ContextType {
-    CAIRO(cairo::Context), // we always have cairo as a fallback
+    Raqote(raqote::DrawTarget), // we always have cairo as a fallback
     VULKAN,
     CUDA,
     HIP,
@@ -83,25 +83,21 @@ impl Scene {
     fn new() -> Self {
         Scene { mobjects: vec![] }
     }
-    fn save_png(&self, ctx: &Context, file_path: &str) {
-        let mut f = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(file_path)
-            .unwrap();
-
+    fn save_png(&self, ctx: &mut Context, file_path: &str) {
         ctx.clear_transparent();
 
-        match &ctx.ctx_type {
-            ContextType::CAIRO(c) => {
-                for m in &self.mobjects {
-                    m.draw(ctx);
-                }
-                c.target().write_to_png(&mut f);
+        for m in self.mobjects.iter() {
+            m.draw(ctx);
+        }
+
+        match &mut ctx.ctx_type {
+            ContextType::Raqote(dt) => {
+                dt.write_png(file_path);
             }
             _ => {}
         }
     }
+
     fn add(&mut self, mobject: Box<dyn Mobject>) {
         self.mobjects.push(mobject);
     }
@@ -110,16 +106,12 @@ impl Scene {
 impl Default for Context {
     fn default() -> Self {
         let scene_config = SceneConfig::default();
-        let image_surface = cairo::ImageSurface::create(
-            cairo::Format::ARgb32,
+        let dt = raqote::DrawTarget::new(
             scene_config.output_width as i32,
             scene_config.output_height as i32,
-        )
-        .unwrap();
-        let ctx_cr = cairo::Context::new(image_surface).unwrap();
-        let ctx_type = ContextType::CAIRO(ctx_cr);
+        );
         Self {
-            ctx_type: ctx_type,
+            ctx_type: ContextType::Raqote(dt),
             scene_config,
         }
     }
@@ -128,23 +120,26 @@ impl Default for Context {
 impl Context {
     fn clear_transparent(&self) {
         match &self.ctx_type {
-            ContextType::CAIRO(c) => {
-                c.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-                c.set_operator(cairo::Operator::Source);
-                c.paint();
-            }
             _ => {}
         }
     }
 
     // of cause this is a big cost, but i don't know how to optimize here.
-    fn image_bytes(&self) -> Vec<u8>{
+    //this is slow, try other way first
+    fn image_bytes(&self) -> Vec<u8> {
         match &self.ctx_type {
-            ContextType::CAIRO(c) => {
-                let s = c.target().map_to_image(None).unwrap();
-                let mut img = s.map_to_image(None).unwrap().to_owned();
-                let data = img.data().unwrap();
-                data.to_vec()
+            ContextType::Raqote(dt) => {
+                let mut buf: Vec<u8> = Vec::with_capacity(
+                    (self.scene_config.output_width * self.scene_config.output_height * 4) as usize,
+                );
+                let data = dt.get_data();
+                for d in data {
+                    buf.push(((d >> 16) & 0xff) as u8);
+                    buf.push((d >> 8) as u8);
+                    buf.push((d >> 0) as u8);
+                    buf.push((d >> 24) as u8);
+                }
+                buf
             }
             _ => {
                 vec![]
@@ -154,7 +149,7 @@ impl Context {
 }
 pub trait Draw {
     //draw shape without fill
-    fn draw(&self, ctx: &Context);
+    fn draw(&self, ctx: &mut Context);
 }
 
 struct PolyLine {
@@ -186,26 +181,38 @@ pub fn coordinate_change_y(position_y: f32, scene_height: f32) -> f32 {
 }
 
 impl Draw for SimpleLine {
-    fn draw(self: &Self, ctx: &Context) {
-        match &ctx.ctx_type {
-            ContextType::CAIRO(c) => {
-                let scale_factor = ctx.scene_config.scale_factor;
-                c.set_line_width((self.stroke_width * scale_factor).into());
-                c.set_line_cap(cairo::LineCap::Butt);
-                c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
-                c.move_to(
-                    (coordinate_change_x(self.p0[[0]], ctx.scene_config.width) * scale_factor)
-                        .into(),
-                    (coordinate_change_y(self.p0[[1]], ctx.scene_config.height) * scale_factor)
-                        .into(),
+    fn draw(self: &Self, ctx: &mut Context) {
+        let scale_factor = ctx.scene_config.scale_factor;
+        match &mut ctx.ctx_type {
+            ContextType::Raqote(dt) => {
+                let mut pb = raqote::PathBuilder::new();
+                let p0 = (
+                    coordinate_change_x(self.p0[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.p0[[1]], ctx.scene_config.height) * scale_factor,
                 );
-                c.line_to(
-                    (coordinate_change_x(self.p1[[0]], ctx.scene_config.width) * scale_factor)
-                        .into(),
-                    (coordinate_change_y(self.p1[[1]], ctx.scene_config.height) * scale_factor)
-                        .into(),
+                let p1 = (
+                    coordinate_change_x(self.p1[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.p1[[1]], ctx.scene_config.height) * scale_factor,
                 );
-                c.stroke().unwrap();
+                pb.move_to(p0.0, p0.1);
+                pb.line_to(p1.0, p1.1);
+                let path = pb.finish();
+                dt.stroke(
+                    &path,
+                    &raqote::Source::Solid(raqote::SolidSource {
+                        r: 0x0,
+                        g: 0x0,
+                        b: 0x80,
+                        a: 0x80,
+                    }),
+                    &raqote::StrokeStyle {
+                        cap: raqote::LineCap::Round,
+                        join: raqote::LineJoin::Round,
+                        width: self.stroke_width * scale_factor,
+                        ..Default::default()
+                    },
+                    &raqote::DrawOptions::new(),
+                );
             }
             _ => {}
         }
@@ -213,33 +220,72 @@ impl Draw for SimpleLine {
 }
 
 impl Draw for PolyLine {
-    fn draw(self: &Self, ctx: &Context) {
-        match &ctx.ctx_type {
-            ContextType::CAIRO(c) => {
-                let scale_factor = ctx.scene_config.scale_factor;
-                if self.points.len() < 2 {
-                    return;
-                }
-                c.set_line_width((self.stroke_width * scale_factor).into());
-                c.set_line_cap(cairo::LineCap::Butt);
-                c.set_line_join(cairo::LineJoin::Round);
-                c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
-                c.move_to(
-                    (coordinate_change_x(self.points[0][[0]], ctx.scene_config.width)
-                        * scale_factor)
-                        .into(),
-                    (coordinate_change_y(self.points[0][[1]], ctx.scene_config.height)
-                        * ctx.scene_config.scale_factor)
-                        .into(),
+    fn draw(self: &Self, ctx: &mut Context) {
+        if self.points.len() < 2 {
+            return;
+        }
+
+        let scale_factor = ctx.scene_config.scale_factor;
+
+        match &mut ctx.ctx_type {
+            // ContextType::CAIRO(c) => {
+            //     let scale_factor = ctx.scene_config.scale_factor;
+            //     if self.points.len() < 2 {
+            //         return;
+            //     }
+            //     c.set_line_width((self.stroke_width * scale_factor).into());
+            //     c.set_line_cap(cairo::LineCap::Butt);
+            //     c.set_line_join(cairo::LineJoin::Round);
+            //     c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
+            //     c.move_to(
+            //         (coordinate_change_x(self.points[0][[0]], ctx.scene_config.width)
+            //             * scale_factor)
+            //             .into(),
+            //         (coordinate_change_y(self.points[0][[1]], ctx.scene_config.height)
+            //             * ctx.scene_config.scale_factor)
+            //             .into(),
+            //     );
+            //     for p in self.points[1..].iter() {
+            //         c.line_to(
+            //             (coordinate_change_x(p[[0]], ctx.scene_config.width) * scale_factor).into(),
+            //             (coordinate_change_y(p[[1]], ctx.scene_config.height) * scale_factor)
+            //                 .into(),
+            //         );
+            //     }
+            //     c.stroke().unwrap();
+            // }
+            ContextType::Raqote(dt) => {
+                let mut pb = raqote::PathBuilder::new();
+                let p0 = (
+                    coordinate_change_x(self.points[0][[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.points[0][[1]], ctx.scene_config.height)
+                        * scale_factor,
                 );
+                pb.move_to(p0.0, p0.1);
                 for p in self.points[1..].iter() {
-                    c.line_to(
-                        (coordinate_change_x(p[[0]], ctx.scene_config.width) * scale_factor).into(),
-                        (coordinate_change_y(p[[1]], ctx.scene_config.height) * scale_factor)
-                            .into(),
+                    let point = (
+                        coordinate_change_x(p[[0]], ctx.scene_config.width) * scale_factor,
+                        coordinate_change_y(p[[1]], ctx.scene_config.height) * scale_factor,
                     );
+                    pb.line_to(point.0, point.1);
                 }
-                c.stroke().unwrap();
+                let path = pb.finish();
+                dt.stroke(
+                    &path,
+                    &raqote::Source::Solid(raqote::SolidSource {
+                        r: 0x0,
+                        g: 0x0,
+                        b: 0x80,
+                        a: 0x80,
+                    }),
+                    &raqote::StrokeStyle {
+                        cap: raqote::LineCap::Round,
+                        join: raqote::LineJoin::Round,
+                        width: self.stroke_width * scale_factor,
+                        ..Default::default()
+                    },
+                    &raqote::DrawOptions::new(),
+                );
             }
             _ => {}
         }
@@ -247,26 +293,48 @@ impl Draw for PolyLine {
 }
 
 impl Draw for Rectangle {
-    fn draw(self: &Self, ctx: &Context) {
-        match &ctx.ctx_type {
-            ContextType::CAIRO(c) => {
+    fn draw(self: &Self, ctx: &mut Context) {
+        match &mut ctx.ctx_type {
+            ContextType::Raqote(dt) => {
                 let scale_factor = ctx.scene_config.scale_factor;
-                c.set_line_width((self.stroke_width * scale_factor).into());
-                c.set_line_cap(cairo::LineCap::Butt);
-                c.set_line_join(cairo::LineJoin::Round);
-                c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
-
-                c.rectangle(
-                    (coordinate_change_x(self.position[[0]], ctx.scene_config.width)
-                        * scale_factor)
-                        .into(),
-                    (coordinate_change_x(self.position[[1]], ctx.scene_config.height)
-                        * scale_factor)
-                        .into(),
-                    (self.width * scale_factor).into(),
-                    (self.height * scale_factor).into(),
+                let mut pb = raqote::PathBuilder::new();
+                let p0 = (
+                    coordinate_change_x(self.position[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.position[[1]], ctx.scene_config.height) * scale_factor,
                 );
-                c.stroke().unwrap();
+                let p1 = (
+                    coordinate_change_x(self.position[[0]] + self.width, ctx.scene_config.width)
+                        * scale_factor,
+                    p0.1,
+                );
+                let p2 = (
+                    p1.0,
+                    coordinate_change_y(self.position[[1]] + self.height, ctx.scene_config.height)
+                        * scale_factor,
+                );
+                let p3 = (p0.0, p2.1);
+                pb.move_to(p0.0, p0.1);
+                pb.line_to(p1.0, p1.1);
+                pb.line_to(p2.0, p2.1);
+                pb.line_to(p3.0, p3.1);
+                pb.line_to(p0.0, p0.1);
+                let path = pb.finish();
+                dt.stroke(
+                    &path,
+                    &raqote::Source::Solid(raqote::SolidSource {
+                        r: 0xff,
+                        g: 0x0,
+                        b: 0x0,
+                        a: 0xff,
+                    }),
+                    &raqote::StrokeStyle {
+                        cap: raqote::LineCap::Round,
+                        join: raqote::LineJoin::Round,
+                        width: self.stroke_width * scale_factor,
+                        ..Default::default()
+                    },
+                    &raqote::DrawOptions::new(),
+                );
             }
             _ => {}
         }
@@ -286,7 +354,7 @@ impl Mobject for PolyLine {}
 impl Mobject for Rectangle {}
 #[test]
 fn test_simple_line_image() {
-    let ctx = Context::default();
+    let mut ctx = Context::default();
     let mut scene = Scene::new();
     let simple_line = SimpleLine {
         stroke_width: 0.2,
@@ -300,12 +368,12 @@ fn test_simple_line_image() {
     };
     scene.add(Box::new(simple_line));
     scene.add(Box::new(simple_line2));
-    scene.save_png(&ctx, "simple_line.png");
+    scene.save_png(&mut ctx, "simple_line.png");
 }
 
 #[test]
 fn test_polyline_image() {
-    let ctx = Context::default();
+    let mut ctx = Context::default();
     let mut scene = Scene::new();
     let polyline = PolyLine {
         stroke_width: 0.2,
@@ -313,17 +381,17 @@ fn test_polyline_image() {
             ndarray::arr1(&[0.0, 0.0]),
             ndarray::arr1(&[3.5, 1.0]),
             ndarray::arr1(&[3.5, 3.5]),
-            ndarray::arr1(&[4.0, 4.5]),
-            ndarray::arr1(&[6.0, 4.5]),
+            ndarray::arr1(&[4.0, 4.0]),
+            ndarray::arr1(&[6.0, 4.0]),
         ],
     };
     scene.add(Box::new(polyline));
-    scene.save_png(&ctx, "poly_line.png");
+    scene.save_png(&mut ctx, "poly_line.png");
 }
 
 #[test]
 fn test_rectangle_image() {
-    let ctx = Context::default();
+    let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
@@ -332,12 +400,12 @@ fn test_rectangle_image() {
         height: 3.0,
     };
     scene.add(Box::new(rectangle));
-    scene.save_png(&ctx, "rectangle.png");
+    scene.save_png(&mut ctx, "rectangle.png");
 }
 
 #[test]
-fn write_frame(){
-    let ctx = Context::default();
+fn write_frame() {
+    let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
@@ -346,11 +414,17 @@ fn write_frame(){
         height: 3.0,
     };
     scene.add(Box::new(rectangle));
-    for m in scene.mobjects{
-        m.draw(&ctx);
+    for m in scene.mobjects {
+        m.draw(&mut ctx);
     }
+
     let bytes = ctx.image_bytes();
-    let mut f = std::fs::OpenOptions::new().write(true).create(true).open("frame.rgba").unwrap();
+
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open("frame.rgba")
+        .unwrap();
     use std::io::Write;
     f.write_all(&bytes).unwrap();
 }
