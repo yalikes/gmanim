@@ -124,25 +124,27 @@ impl Context {
         }
     }
 
-    // of cause this is a big cost, but i don't know how to optimize here.
-    //this is slow, try other way first
-    fn image_bytes(&self) -> Vec<u8> {
+    fn image_bytes(&self) -> &[u8] {
         match &self.ctx_type {
             ContextType::Raqote(dt) => {
-                let mut buf: Vec<u8> = Vec::with_capacity(
-                    (self.scene_config.output_width * self.scene_config.output_height * 4) as usize,
-                );
-                let data = dt.get_data();
-                for d in data {
-                    buf.push(((d >> 16) & 0xff) as u8);
-                    buf.push((d >> 8) as u8);
-                    buf.push((d >> 0) as u8);
-                    buf.push((d >> 24) as u8);
-                }
-                buf
+                dt.get_data_u8()
+                // let mut buf: Vec<u8> = Vec::with_capacity(
+                //     (self.scene_config.output_width * self.scene_config.output_height * 4) as usize,
+                // );
+                // let data = dt.get_data();
+                // println!("data len: {}", data.len());
+                // let now = std::time::Instant::now();
+                // for d in data {
+                //     buf.push(((d >> 16) & 0xff) as u8);
+                //     buf.push(((d >> 8) & 0xff) as u8);
+                //     buf.push(((d >> 0) & 0xff) as u8);
+                //     buf.push(((d >> 24) & 0xff)  as u8);
+                // }
+                // println!("compute: {:?}", now.elapsed());
+                // buf
             }
             _ => {
-                vec![]
+                &[]
             }
         }
     }
@@ -403,6 +405,23 @@ fn test_rectangle_image() {
     scene.save_png(&mut ctx, "rectangle.png");
 }
 
+struct AnimationConfig {
+    current_frame: u32,
+    total_frames: u32,
+}
+struct Movement {
+    displacement: ndarray::Array1<f32>,
+    animation_config: AnimationConfig,
+    mobject: Box<dyn Mobject>
+}
+
+impl Iterator for Movement {
+    type Item = Vec<u8>;
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
 #[test]
 fn write_frame() {
     let mut ctx = Context::default();
@@ -423,7 +442,7 @@ fn write_frame() {
     let mut f = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .open("frame.rgba")
+        .open("frame.bgra")
         .unwrap();
     use std::io::Write;
     f.write_all(&bytes).unwrap();
