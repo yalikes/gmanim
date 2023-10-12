@@ -128,20 +128,6 @@ impl Context {
         match &self.ctx_type {
             ContextType::Raqote(dt) => {
                 dt.get_data_u8()
-                // let mut buf: Vec<u8> = Vec::with_capacity(
-                //     (self.scene_config.output_width * self.scene_config.output_height * 4) as usize,
-                // );
-                // let data = dt.get_data();
-                // println!("data len: {}", data.len());
-                // let now = std::time::Instant::now();
-                // for d in data {
-                //     buf.push(((d >> 16) & 0xff) as u8);
-                //     buf.push(((d >> 8) & 0xff) as u8);
-                //     buf.push(((d >> 0) & 0xff) as u8);
-                //     buf.push(((d >> 24) & 0xff)  as u8);
-                // }
-                // println!("compute: {:?}", now.elapsed());
-                // buf
             }
             _ => {
                 &[]
@@ -230,32 +216,6 @@ impl Draw for PolyLine {
         let scale_factor = ctx.scene_config.scale_factor;
 
         match &mut ctx.ctx_type {
-            // ContextType::CAIRO(c) => {
-            //     let scale_factor = ctx.scene_config.scale_factor;
-            //     if self.points.len() < 2 {
-            //         return;
-            //     }
-            //     c.set_line_width((self.stroke_width * scale_factor).into());
-            //     c.set_line_cap(cairo::LineCap::Butt);
-            //     c.set_line_join(cairo::LineJoin::Round);
-            //     c.set_source_rgba(1.0, 1.0, 0.5, 1.0);
-            //     c.move_to(
-            //         (coordinate_change_x(self.points[0][[0]], ctx.scene_config.width)
-            //             * scale_factor)
-            //             .into(),
-            //         (coordinate_change_y(self.points[0][[1]], ctx.scene_config.height)
-            //             * ctx.scene_config.scale_factor)
-            //             .into(),
-            //     );
-            //     for p in self.points[1..].iter() {
-            //         c.line_to(
-            //             (coordinate_change_x(p[[0]], ctx.scene_config.width) * scale_factor).into(),
-            //             (coordinate_change_y(p[[1]], ctx.scene_config.height) * scale_factor)
-            //                 .into(),
-            //         );
-            //     }
-            //     c.stroke().unwrap();
-            // }
             ContextType::Raqote(dt) => {
                 let mut pb = raqote::PathBuilder::new();
                 let p0 = (
