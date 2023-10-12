@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use std::os::fd::AsFd;
+
 mod video_backend;
 struct Color {
     r: f32,
@@ -126,12 +128,8 @@ impl Context {
 
     fn image_bytes(&self) -> &[u8] {
         match &self.ctx_type {
-            ContextType::Raqote(dt) => {
-                dt.get_data_u8()
-            }
-            _ => {
-                &[]
-            }
+            ContextType::Raqote(dt) => dt.get_data_u8(),
+            _ => &[],
         }
     }
 }
@@ -372,7 +370,7 @@ struct AnimationConfig {
 struct Movement {
     displacement: ndarray::Array1<f32>,
     animation_config: AnimationConfig,
-    mobject: Box<dyn Mobject>
+    mobject: Box<dyn Mobject>,
 }
 
 impl Iterator for Movement {
@@ -399,11 +397,47 @@ fn write_frame() {
 
     let bytes = ctx.image_bytes();
 
-    let mut f = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open("frame.bgra")
-        .unwrap();
     use std::io::Write;
-    f.write_all(&bytes).unwrap();
+    use std::process::Command;
+    use std::sync::mpsc;
+    use std::sync::mpsc::{Receiver, Sender};
+    use std::thread;
+    let (tx, rx): (Sender<&[u8]>, Receiver<&[u8]>) = mpsc::channel();
+    let h = thread::spawn(move || {
+        let mut c = Command::new("ffmpeg")
+            .args([
+                "-y",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "bgra",
+                "-s",
+                "1920x1080",
+                "-r",
+                "60",
+                "-i",
+                "-",
+                "-an",
+                "-vcodec",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "output.mp4",
+            ])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("failed to spawn child process");
+        let mut stdin = c.stdin.take().expect("failed to open stdin");
+        // let data = rx.recv().unwrap();
+        use std::iter;
+        let data: Vec<u8> = [0xaf, 0xd0,0x2f,0xff].repeat(1920 * 1080);
+        for _ in 0..120 {
+            stdin.write_all(&data);
+        }
+        //when stdin got droped, underlying file also got closed.
+    });
+    // tx.send(bytes);
+    h.join();
 }
