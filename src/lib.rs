@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-use std::os::fd::AsFd;
-
 mod video_backend;
 struct Color {
     r: f32,
@@ -402,42 +400,17 @@ fn write_frame() {
     use std::sync::mpsc;
     use std::sync::mpsc::{Receiver, Sender};
     use std::thread;
-    let (tx, rx): (Sender<&[u8]>, Receiver<&[u8]>) = mpsc::channel();
-    let h = thread::spawn(move || {
-        let mut c = Command::new("ffmpeg")
-            .args([
-                "-y",
-                "-f",
-                "rawvideo",
-                "-pix_fmt",
-                "bgra",
-                "-s",
-                "1920x1080",
-                "-r",
-                "60",
-                "-i",
-                "-",
-                "-an",
-                "-vcodec",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "output.mp4",
-            ])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .expect("failed to spawn child process");
-        let mut stdin = c.stdin.take().expect("failed to open stdin");
-        // let data = rx.recv().unwrap();
-        use std::iter;
-        let data: Vec<u8> = [0xaf, 0xd0,0x2f,0xff].repeat(1920 * 1080);
-        for _ in 0..120 {
-            stdin.write_all(&data);
+    let (tx, rx) = mpsc::channel();
+
+    thread::scope(|s| {
+        let mut backend = video_backend::FFMPEGBackend { frame_receiver: rx };
+        s.spawn(move || {
+            backend.start_video_backend();
+        });
+        for _ in 0..4800 {
+            tx.send(video_backend::FrameMessage::Frame(bytes)).unwrap();
         }
-        //when stdin got droped, underlying file also got closed.
+        tx.send(video_backend::FrameMessage::End).unwrap();
+        tx.clone();
     });
-    // tx.send(bytes);
-    h.join();
 }
