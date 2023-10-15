@@ -118,8 +118,16 @@ impl Default for Context {
 }
 
 impl Context {
-    fn clear_transparent(&self) {
-        match &self.ctx_type {
+    fn clear_transparent(&mut self) {
+        match &mut self.ctx_type {
+            ContextType::Raqote(dt) => {
+                dt.clear(raqote::SolidSource {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 0,
+                });
+            }
             _ => {}
         }
     }
@@ -132,7 +140,7 @@ impl Context {
     }
 }
 pub trait Draw {
-    //draw shape without fill
+    //draw shape without fill()
     fn draw(&self, ctx: &mut Context);
 }
 
@@ -380,6 +388,8 @@ impl Iterator for Movement {
 
 #[test]
 fn write_frame() {
+    use std::sync::{Arc, Mutex};
+    use std::thread;
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
@@ -389,28 +399,30 @@ fn write_frame() {
         height: 3.0,
     };
     scene.add(Box::new(rectangle));
-    for m in scene.mobjects {
-        m.draw(&mut ctx);
-    }
-
-    let bytes = ctx.image_bytes();
 
     use std::io::Write;
     use std::process::Command;
     use std::sync::mpsc;
     use std::sync::mpsc::{Receiver, Sender};
-    use std::thread;
-    let (tx, rx) = mpsc::channel();
 
-    thread::scope(|s| {
-        let mut backend = video_backend::FFMPEGBackend { frame_receiver: rx };
-        s.spawn(move || {
-            backend.start_video_backend();
-        });
-        for _ in 0..4800 {
-            tx.send(video_backend::FrameMessage::Frame(bytes)).unwrap();
+    use video_backend::{FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType};
+
+    let mut video_backend_var = VideoBackend {
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new()),
+        video_config: video_backend::VideoConfig {
+            filename: "output.mp4".to_owned(),
+            framerate: 60,
+            output_width: 1920,
+            output_height: 1080,
+        },
+    };
+    for _ in 0..480 {
+        let now = std::time::Instant::now();
+        scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));
+        ctx.clear_transparent();
+        for m in scene.mobjects.iter() {
+            m.draw(&mut ctx);
         }
-        tx.send(video_backend::FrameMessage::End).unwrap();
-        tx.clone();
-    });
+        video_backend_var.write_frame(ctx.image_bytes());
+    }
 }

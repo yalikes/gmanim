@@ -2,7 +2,7 @@ use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 pub enum VideoBackendType {
-    FFMPEG,
+    FFMPEG(FFMPEGBackend),
     Gstreamer,
 }
 
@@ -18,27 +18,36 @@ pub struct VideoConfig {
     pub output_height: u32,
 }
 
-pub struct FFMPEGBackend<'a> {
-    pub frame_receiver: mpsc::Receiver<FrameMessage<'a>>,
+pub struct FFMPEGBackend {
+    child: std::process::Child,
+    stdin: std::process::ChildStdin,
 }
 
-pub enum FrameMessage<'a> {
-    Frame(&'a [u8]),
+pub enum FrameMessage {
+    Frame,
     End,
 }
 
-impl<'a> VideoWriter for FFMPEGBackend<'a> {
-    fn write_frame(&mut self, frame_bytes: &[u8]) {}
+pub enum FrameDoneMessage {
+    Ok,
+    Err,
 }
 
-impl<'a> FFMPEGBackend<'a> {
-    pub fn new() -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
-        FFMPEGBackend { frame_receiver: rx }
+impl VideoBackend {
+    pub fn write_frame(&mut self, frame_data: &[u8]) {
+        match &mut self.backend_type {
+            VideoBackendType::FFMPEG(f) => {
+                use std::io::Write;
+                f.stdin.write_all(frame_data);
+            }
+            _ => {}
+        }
     }
-    pub fn start_video_backend(&self) {
-        use std::process::Command;
-        let mut c = Command::new("ffmpeg")
+}
+
+impl FFMPEGBackend {
+    pub fn new() -> Self {
+        let mut c = std::process::Command::new("ffmpeg")
             .args([
                 "-y",
                 "-f",
@@ -64,25 +73,9 @@ impl<'a> FFMPEGBackend<'a> {
             .spawn()
             .expect("failed to spawn child process");
         let mut stdin = c.stdin.take().expect("failed to open stdin");
-        use std::io::Write;
-        loop {
-            match self.frame_receiver.recv() {
-                Ok(data) => match data {
-                    FrameMessage::Frame(frame_bytes) => {
-                        stdin.write_all(frame_bytes);
-                    }
-                    FrameMessage::End => {
-                        break;
-                    }
-                },
-                Err(e) => {
-                    break;
-                }
-            }
+        Self {
+            child: c,
+            stdin: stdin,
         }
     }
-}
-
-trait VideoWriter {
-    fn write_frame(&mut self, frame_bytes: &[u8]);
 }
