@@ -405,16 +405,16 @@ fn write_frame() {
     use std::sync::mpsc;
     use std::sync::mpsc::{Receiver, Sender};
 
-    use video_backend::{FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, BgraRAWBackend};
+    use video_backend::{FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, BgraRAWBackend, VideoConfig};
 
+    let video_config = VideoConfig{
+        filename: "output.mp4".to_owned(),
+        framerate: 60,
+        output_height: 1920,
+        output_width: 1080,
+    };
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new()),
-        video_config: video_backend::VideoConfig {
-            filename: "output.mp4".to_owned(),
-            framerate: 60,
-            output_width: 1920,
-            output_height: 1080,
-        },
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
     };
     for _ in 0..480 {
         scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));

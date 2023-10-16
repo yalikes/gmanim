@@ -9,7 +9,6 @@ pub enum VideoBackendType {
 
 pub struct VideoBackend {
     pub backend_type: VideoBackendType,
-    pub video_config: VideoConfig,
 }
 
 pub struct VideoConfig {
@@ -55,7 +54,7 @@ impl VideoBackend {
 }
 
 impl FFMPEGBackend {
-    pub fn new() -> Self {
+    pub fn new(video_config: &VideoConfig) -> Self {
         let mut c = std::process::Command::new("ffmpeg")
             .args([
                 "-y",
@@ -64,9 +63,9 @@ impl FFMPEGBackend {
                 "-pix_fmt",
                 "bgra",
                 "-s",
-                "1920x1080",
+                &format!("{}x{}", video_config.output_width, video_config.output_height),
                 "-r",
-                "60",
+                &format!("{}", video_config.framerate),
                 "-i",
                 "-",
                 "-an",
@@ -74,7 +73,7 @@ impl FFMPEGBackend {
                 "libx264",
                 "-pix_fmt",
                 "yuv420p",
-                "output.mp4",
+                &format!("{}", video_config.filename),
             ])
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::null())
@@ -90,7 +89,7 @@ impl FFMPEGBackend {
 }
 
 impl BgraRAWBackend {
-    pub fn new() -> Self {
+    pub fn new(video_config: &VideoConfig) -> Self {
         let file = std::fs::OpenOptions::new()
             .create(true)
             .write(true)
