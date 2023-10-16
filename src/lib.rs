@@ -405,7 +405,7 @@ fn write_frame() {
     use std::sync::mpsc;
     use std::sync::mpsc::{Receiver, Sender};
 
-    use video_backend::{FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType};
+    use video_backend::{FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, BgraRAWBackend};
 
     let mut video_backend_var = VideoBackend {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new()),
@@ -417,7 +417,6 @@ fn write_frame() {
         },
     };
     for _ in 0..480 {
-        let now = std::time::Instant::now();
         scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {

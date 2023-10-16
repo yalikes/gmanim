@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 pub enum VideoBackendType {
     FFMPEG(FFMPEGBackend),
+    BgraRAW(BgraRAWBackend),
     Gstreamer,
 }
 
@@ -23,6 +24,10 @@ pub struct FFMPEGBackend {
     stdin: std::process::ChildStdin,
 }
 
+pub struct BgraRAWBackend {
+    file: std::fs::File,
+}
+
 pub enum FrameMessage {
     Frame,
     End,
@@ -39,6 +44,10 @@ impl VideoBackend {
             VideoBackendType::FFMPEG(f) => {
                 use std::io::Write;
                 f.stdin.write_all(frame_data);
+            }
+            VideoBackendType::BgraRAW(f) => {
+                use std::io::Write;
+                f.file.write_all(frame_data);
             }
             _ => {}
         }
@@ -77,5 +86,16 @@ impl FFMPEGBackend {
             child: c,
             stdin: stdin,
         }
+    }
+}
+
+impl BgraRAWBackend {
+    pub fn new() -> Self {
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open("/tmp/output.bgra")
+            .unwrap();
+        Self { file }
     }
 }
