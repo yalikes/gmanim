@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -93,7 +94,7 @@ impl BgraRAWBackend {
         let file = std::fs::OpenOptions::new()
             .create(true)
             .write(true)
-            .open("/tmp/output.bgra")
+            .open(&format!("{}", video_config.filename))
             .unwrap();
         Self { file }
     }

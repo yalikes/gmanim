@@ -1,6 +1,9 @@
 #![allow(unused)]
 
 mod video_backend;
+mod mobjects;
+
+use mobjects::Mobject;
 struct Color {
     r: f32,
     g: f32,
@@ -38,70 +41,6 @@ impl Default for SceneConfig {
     }
 }
 
-trait SimpleMove {
-    fn move_this(&mut self, movement: ndarray::Array1<f32>) {}
-}
-
-impl SimpleMove for SimpleLine {
-    fn move_this(&mut self, movement: ndarray::Array1<f32>) {
-        self.p0 = self.p0.clone() + movement.clone();
-        self.p1 = self.p1.clone() + movement.clone();
-    }
-}
-
-impl SimpleMove for PolyLine {
-    fn move_this(&mut self, movement: ndarray::Array1<f32>) {
-        for i in 0..self.points.len() {
-            self.points[i] = self.points[i].clone() + movement.clone();
-        }
-    }
-}
-
-impl SimpleMove for Rectangle {
-    fn move_this(&mut self, movement: ndarray::Array1<f32>) {
-        self.position = self.position.clone() + movement;
-    }
-}
-trait Rotate {
-    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32);
-}
-
-impl Rotate for SimpleLine {
-    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32) {}
-}
-
-trait Mobject: Rotate + SimpleMove + Draw {}
-
-impl Mobject for SimpleLine {}
-
-#[derive(Default)]
-struct Scene {
-    mobjects: Vec<Box<dyn Mobject>>,
-}
-
-impl Scene {
-    fn new() -> Self {
-        Scene { mobjects: vec![] }
-    }
-    fn save_png(&self, ctx: &mut Context, file_path: &str) {
-        ctx.clear_transparent();
-
-        for m in self.mobjects.iter() {
-            m.draw(ctx);
-        }
-
-        match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                dt.write_png(file_path);
-            }
-            _ => {}
-        }
-    }
-
-    fn add(&mut self, mobject: Box<dyn Mobject>) {
-        self.mobjects.push(mobject);
-    }
-}
 
 impl Default for Context {
     fn default() -> Self {
@@ -139,187 +78,39 @@ impl Context {
         }
     }
 }
-pub trait Draw {
-    //draw shape without fill()
-    fn draw(&self, ctx: &mut Context);
+
+#[derive(Default)]
+struct Scene {
+    mobjects: Vec<Box<dyn Mobject>>,
 }
 
-struct PolyLine {
-    stroke_width: f32,
-    points: Vec<ndarray::Array1<f32>>,
-}
+impl Scene {
+    fn new() -> Self {
+        Scene { mobjects: vec![] }
+    }
+    fn save_png(&self, ctx: &mut Context, file_path: &str) {
+        ctx.clear_transparent();
 
-struct SimpleLine {
-    stroke_width: f32,
-    p0: ndarray::Array1<f32>,
-    p1: ndarray::Array1<f32>,
-}
+        for m in self.mobjects.iter() {
+            m.draw(ctx);
+        }
 
-struct Rectangle {
-    stroke_width: f32,
-    position: ndarray::Array1<f32>,
-    width: f32,
-    height: f32,
-}
-
-#[inline]
-pub fn coordinate_change_x(position_x: f32, scene_width: f32) -> f32 {
-    scene_width / 2.0 + position_x
-}
-
-#[inline]
-pub fn coordinate_change_y(position_y: f32, scene_height: f32) -> f32 {
-    scene_height / 2.0 - position_y
-}
-
-impl Draw for SimpleLine {
-    fn draw(self: &Self, ctx: &mut Context) {
-        let scale_factor = ctx.scene_config.scale_factor;
         match &mut ctx.ctx_type {
             ContextType::Raqote(dt) => {
-                let mut pb = raqote::PathBuilder::new();
-                let p0 = (
-                    coordinate_change_x(self.p0[[0]], ctx.scene_config.width) * scale_factor,
-                    coordinate_change_y(self.p0[[1]], ctx.scene_config.height) * scale_factor,
-                );
-                let p1 = (
-                    coordinate_change_x(self.p1[[0]], ctx.scene_config.width) * scale_factor,
-                    coordinate_change_y(self.p1[[1]], ctx.scene_config.height) * scale_factor,
-                );
-                pb.move_to(p0.0, p0.1);
-                pb.line_to(p1.0, p1.1);
-                let path = pb.finish();
-                dt.stroke(
-                    &path,
-                    &raqote::Source::Solid(raqote::SolidSource {
-                        r: 0x0,
-                        g: 0x0,
-                        b: 0x80,
-                        a: 0x80,
-                    }),
-                    &raqote::StrokeStyle {
-                        cap: raqote::LineCap::Round,
-                        join: raqote::LineJoin::Round,
-                        width: self.stroke_width * scale_factor,
-                        ..Default::default()
-                    },
-                    &raqote::DrawOptions::new(),
-                );
+                dt.write_png(file_path);
             }
             _ => {}
         }
     }
-}
 
-impl Draw for PolyLine {
-    fn draw(self: &Self, ctx: &mut Context) {
-        if self.points.len() < 2 {
-            return;
-        }
-
-        let scale_factor = ctx.scene_config.scale_factor;
-
-        match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                let mut pb = raqote::PathBuilder::new();
-                let p0 = (
-                    coordinate_change_x(self.points[0][[0]], ctx.scene_config.width) * scale_factor,
-                    coordinate_change_y(self.points[0][[1]], ctx.scene_config.height)
-                        * scale_factor,
-                );
-                pb.move_to(p0.0, p0.1);
-                for p in self.points[1..].iter() {
-                    let point = (
-                        coordinate_change_x(p[[0]], ctx.scene_config.width) * scale_factor,
-                        coordinate_change_y(p[[1]], ctx.scene_config.height) * scale_factor,
-                    );
-                    pb.line_to(point.0, point.1);
-                }
-                let path = pb.finish();
-                dt.stroke(
-                    &path,
-                    &raqote::Source::Solid(raqote::SolidSource {
-                        r: 0x0,
-                        g: 0x0,
-                        b: 0x80,
-                        a: 0x80,
-                    }),
-                    &raqote::StrokeStyle {
-                        cap: raqote::LineCap::Round,
-                        join: raqote::LineJoin::Round,
-                        width: self.stroke_width * scale_factor,
-                        ..Default::default()
-                    },
-                    &raqote::DrawOptions::new(),
-                );
-            }
-            _ => {}
-        }
+    fn add(&mut self, mobject: Box<dyn Mobject>) {
+        self.mobjects.push(mobject);
     }
 }
 
-impl Draw for Rectangle {
-    fn draw(self: &Self, ctx: &mut Context) {
-        match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                let scale_factor = ctx.scene_config.scale_factor;
-                let mut pb = raqote::PathBuilder::new();
-                let p0 = (
-                    coordinate_change_x(self.position[[0]], ctx.scene_config.width) * scale_factor,
-                    coordinate_change_y(self.position[[1]], ctx.scene_config.height) * scale_factor,
-                );
-                let p1 = (
-                    coordinate_change_x(self.position[[0]] + self.width, ctx.scene_config.width)
-                        * scale_factor,
-                    p0.1,
-                );
-                let p2 = (
-                    p1.0,
-                    coordinate_change_y(self.position[[1]] + self.height, ctx.scene_config.height)
-                        * scale_factor,
-                );
-                let p3 = (p0.0, p2.1);
-                pb.move_to(p0.0, p0.1);
-                pb.line_to(p1.0, p1.1);
-                pb.line_to(p2.0, p2.1);
-                pb.line_to(p3.0, p3.1);
-                pb.line_to(p0.0, p0.1);
-                let path = pb.finish();
-                dt.stroke(
-                    &path,
-                    &raqote::Source::Solid(raqote::SolidSource {
-                        r: 0xff,
-                        g: 0x0,
-                        b: 0x0,
-                        a: 0xff,
-                    }),
-                    &raqote::StrokeStyle {
-                        cap: raqote::LineCap::Round,
-                        join: raqote::LineJoin::Round,
-                        width: self.stroke_width * scale_factor,
-                        ..Default::default()
-                    },
-                    &raqote::DrawOptions::new(),
-                );
-            }
-            _ => {}
-        }
-    }
-}
-
-impl Rotate for PolyLine {
-    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32) {}
-}
-
-impl Rotate for Rectangle {
-    fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32) {}
-}
-
-impl Mobject for PolyLine {}
-
-impl Mobject for Rectangle {}
 #[test]
 fn test_simple_line_image() {
+    use mobjects::SimpleLine;
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let simple_line = SimpleLine {
@@ -339,6 +130,7 @@ fn test_simple_line_image() {
 
 #[test]
 fn test_polyline_image() {
+    use mobjects::PolyLine;
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let polyline = PolyLine {
@@ -357,6 +149,7 @@ fn test_polyline_image() {
 
 #[test]
 fn test_rectangle_image() {
+    use mobjects::Rectangle;
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
@@ -388,6 +181,7 @@ impl Iterator for Movement {
 
 #[test]
 fn write_frame() {
+    use mobjects::Rectangle;
     use std::sync::{Arc, Mutex};
     use std::thread;
     let mut ctx = Context::default();
@@ -410,8 +204,8 @@ fn write_frame() {
     let video_config = VideoConfig{
         filename: "output.mp4".to_owned(),
         framerate: 60,
-        output_height: 1920,
-        output_width: 1080,
+        output_height: 1080,
+        output_width: 1920,
     };
     let mut video_backend_var = VideoBackend {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
