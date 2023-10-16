@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-mod video_backend;
 mod mobjects;
+mod video_backend;
 
 use mobjects::Mobject;
 struct Color {
@@ -40,7 +40,6 @@ impl Default for SceneConfig {
         }
     }
 }
-
 
 impl Default for Context {
     fn default() -> Self {
@@ -154,9 +153,10 @@ fn test_rectangle_image() {
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
-        position: ndarray::arr1(&[0.0, 0.0, 0.0]),
-        width: 3.0,
-        height: 3.0,
+        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
+        p1: ndarray::arr1(&[3.0, 0.0, 0.0]),
+        p2: ndarray::arr1(&[3.0, 3.0, 0.0]),
+        p3: ndarray::arr1(&[0.0, 3.0, 0.0]),
     };
     scene.add(Box::new(rectangle));
     scene.save_png(&mut ctx, "rectangle.png");
@@ -188,9 +188,10 @@ fn write_frame() {
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
-        position: ndarray::arr1(&[0.0, 0.0, 0.0]),
-        width: 3.0,
-        height: 3.0,
+        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
+        p1: ndarray::arr1(&[3.0, 0.0, 0.0]),
+        p2: ndarray::arr1(&[3.0, 3.0, 0.0]),
+        p3: ndarray::arr1(&[0.0, 3.0, 0.0]),
     };
     scene.add(Box::new(rectangle));
 
@@ -199,9 +200,11 @@ fn write_frame() {
     use std::sync::mpsc;
     use std::sync::mpsc::{Receiver, Sender};
 
-    use video_backend::{FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, BgraRAWBackend, VideoConfig};
+    use video_backend::{
+        BgraRAWBackend, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+    };
 
-    let video_config = VideoConfig{
+    let video_config = VideoConfig {
         filename: "output.mp4".to_owned(),
         framerate: 60,
         output_height: 1080,
@@ -211,11 +214,13 @@ fn write_frame() {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
     };
     for _ in 0..480 {
+        let now = std::time::Instant::now();
         scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);
         }
         video_backend_var.write_frame(ctx.image_bytes());
+        println!("takes {:?}", now.elapsed());
     }
 }

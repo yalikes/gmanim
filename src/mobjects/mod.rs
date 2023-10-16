@@ -42,8 +42,15 @@ impl SimpleMove for PolyLine {
 
 impl SimpleMove for Rectangle {
     fn move_this(&mut self, movement: ndarray::Array1<f32>) {
-        self.position = self.position.clone() + movement;
+        self.p0 = self.p0.clone() + movement.clone();
+        self.p1 = self.p1.clone() + movement.clone();
+        self.p2 = self.p2.clone() + movement.clone();
+        self.p3 = self.p3.clone() + movement;
     }
+}
+
+pub fn rotate_matrix<T: ndarray::NdFloat>(axis: ndarray::Array1<T>, theta: T){
+    //assume axis is a unit vector
 }
 pub trait Rotate {
     fn rotate(&mut self, axis: ndarray::Array1<f32>, value: f32);
@@ -69,9 +76,10 @@ pub struct SimpleLine {
 
 pub struct Rectangle {
     pub stroke_width: f32,
-    pub position: ndarray::Array1<f32>,
-    pub width: f32,
-    pub height: f32,
+    pub p0: ndarray::Array1<f32>,
+    pub p1: ndarray::Array1<f32>,
+    pub p2: ndarray::Array1<f32>,
+    pub p3: ndarray::Array1<f32>,
 }
 
 #[inline]
@@ -177,20 +185,21 @@ impl Draw for Rectangle {
                 let scale_factor = ctx.scene_config.scale_factor;
                 let mut pb = raqote::PathBuilder::new();
                 let p0 = (
-                    coordinate_change_x(self.position[[0]], ctx.scene_config.width) * scale_factor,
-                    coordinate_change_y(self.position[[1]], ctx.scene_config.height) * scale_factor,
+                    coordinate_change_x(self.p0[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.p0[[1]], ctx.scene_config.height) * scale_factor,
                 );
                 let p1 = (
-                    coordinate_change_x(self.position[[0]] + self.width, ctx.scene_config.width)
-                        * scale_factor,
-                    p0.1,
+                    coordinate_change_x(self.p1[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.p1[[1]], ctx.scene_config.height) * scale_factor,
                 );
                 let p2 = (
-                    p1.0,
-                    coordinate_change_y(self.position[[1]] + self.height, ctx.scene_config.height)
-                        * scale_factor,
+                    coordinate_change_x(self.p2[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.p2[[1]], ctx.scene_config.height) * scale_factor,
                 );
-                let p3 = (p0.0, p2.1);
+                let p3 = (
+                    coordinate_change_x(self.p3[[0]], ctx.scene_config.width) * scale_factor,
+                    coordinate_change_y(self.p3[[1]], ctx.scene_config.height) * scale_factor,
+                );
                 pb.move_to(p0.0, p0.1);
                 pb.line_to(p1.0, p1.1);
                 pb.line_to(p2.0, p2.1);
