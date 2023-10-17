@@ -1,5 +1,5 @@
-use std::fmt::format;
-use std::sync::mpsc::{self, Sender};
+use std::collections::VecDeque;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 pub enum VideoBackendType {
@@ -38,6 +38,12 @@ pub enum FrameDoneMessage {
     Err,
 }
 
+#[derive(Clone, Copy)]
+pub enum VideoBackendState {
+    Running,
+    Sleeping,
+}
+
 impl VideoBackend {
     pub fn write_frame(&mut self, frame_data: &[u8]) {
         match &mut self.backend_type {
@@ -52,6 +58,43 @@ impl VideoBackend {
             _ => {}
         }
     }
+    pub fn write_frame_background(
+        &mut self,
+        rx: Receiver<FrameMessage>,
+        state: Arc<Mutex<VideoBackendState>>,
+        queue: Arc<Mutex<VecDeque<Vec<u8>>>>,
+    ) {
+        loop {
+            let now = std::time::Instant::now();
+            let data;
+            {
+                let mut queue_guard = queue.lock().unwrap();
+                data = queue_guard.pop_front();
+            }
+            if data.is_none() {
+                {
+                    let mut state_guard = state.lock().unwrap();
+                    *state_guard = VideoBackendState::Sleeping;
+                }
+                println!("sleeping!");
+                match rx.recv() {
+                    Ok(f) => match f {
+                        FrameMessage::Frame => {}
+                        FrameMessage::End => {
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        //no more frame
+                        break;
+                    }
+                }
+            } else {
+                self.write_frame(&data.unwrap());
+            }
+            println!("write takes: {:?}", now.elapsed());
+        }
+    }
 }
 
 impl FFMPEGBackend {
@@ -64,7 +107,10 @@ impl FFMPEGBackend {
                 "-pix_fmt",
                 "bgra",
                 "-s",
-                &format!("{}x{}", video_config.output_width, video_config.output_height),
+                &format!(
+                    "{}x{}",
+                    video_config.output_width, video_config.output_height
+                ),
                 "-r",
                 &format!("{}", video_config.framerate),
                 "-i",

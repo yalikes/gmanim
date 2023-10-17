@@ -221,6 +221,80 @@ fn write_frame() {
             m.draw(&mut ctx);
         }
         video_backend_var.write_frame(ctx.image_bytes());
-        println!("takes {:?}", now.elapsed());
+        // println!("takes {:?}", now.elapsed());
     }
+}
+
+#[test]
+fn thread_frame_pass() {
+    use mobjects::Rectangle;
+    use std::sync::mpsc::channel;
+    use std::sync::{Arc, Mutex};
+    use std::thread;
+    let mut ctx = Context::default();
+    let mut scene = Scene::new();
+    let rectangle = Rectangle {
+        stroke_width: 0.2,
+        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
+        p1: ndarray::arr1(&[3.0, 0.0, 0.0]),
+        p2: ndarray::arr1(&[3.0, 3.0, 0.0]),
+        p3: ndarray::arr1(&[0.0, 3.0, 0.0]),
+    };
+    scene.add(Box::new(rectangle));
+
+    use std::collections::VecDeque;
+    use std::io::Write;
+    use std::process::Command;
+    use std::sync::mpsc;
+    use std::sync::mpsc::{Receiver, Sender};
+
+    use video_backend::{
+        BgraRAWBackend, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+    };
+
+    let video_config = VideoConfig {
+        filename: "output.mp4".to_owned(),
+        framerate: 60,
+        output_height: 1080,
+        output_width: 1920,
+    };
+
+    let mut video_backend_var = VideoBackend {
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
+    };
+
+    let (tx, rx) = channel::<video_backend::FrameMessage>();
+    let queue = Arc::new(Mutex::new(VecDeque::<Vec<u8>>::new()));
+    let queue_ref = queue.clone();
+
+    let state = Arc::new(Mutex::new(video_backend::VideoBackendState::Running));
+    let state_ref = state.clone();
+    let thread_handler = thread::spawn(move || {
+        video_backend_var.write_frame_background(rx, state_ref, queue_ref);
+    });
+    for _ in 0..480 {
+        let now = std::time::Instant::now();
+        scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));
+        ctx.clear_transparent();
+        for m in scene.mobjects.iter() {
+            m.draw(&mut ctx);
+        }
+        let data_bytes = ctx.image_bytes().to_vec();
+        {
+            let mut queue_guard = queue.lock().unwrap();
+            queue_guard.push_back(data_bytes);
+        } //release queue lock
+        {
+            let mut state_guard = state.lock().unwrap();
+            match *state_guard {
+                video_backend::VideoBackendState::Sleeping => {
+                    *state_guard = video_backend::VideoBackendState::Running;
+                    tx.send(FrameMessage::Frame);
+                }
+                _ => {}
+            }
+        } //release state lock
+        tx.send(FrameMessage::End);
+    }
+    thread_handler.join();
 }
