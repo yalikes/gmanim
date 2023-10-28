@@ -3,6 +3,7 @@
 mod mobjects;
 mod video_backend;
 mod math_utils;
+mod camera;
 
 use mobjects::Mobject;
 struct Color {
