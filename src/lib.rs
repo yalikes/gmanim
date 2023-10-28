@@ -3,9 +3,10 @@
 mod mobjects;
 mod video_backend;
 mod math_utils;
-mod camera;
 
 use mobjects::Mobject;
+
+type GMFloat = f32;
 struct Color {
     r: f32,
     g: f32,
@@ -116,13 +117,13 @@ fn test_simple_line_image() {
     let mut scene = Scene::new();
     let simple_line = SimpleLine {
         stroke_width: 0.2,
-        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
-        p1: ndarray::arr1(&[1.0, 1.0, 0.0]),
+        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Vector3::new(1.0, 1.0, 0.0),
     };
     let simple_line2 = SimpleLine {
         stroke_width: 0.2,
-        p0: ndarray::arr1(&[1.0, 1.0, 0.0]),
-        p1: ndarray::arr1(&[5.0, 2.0, 0.0]),
+        p0: nalgebra::Vector3::new(1.0, 1.0, 0.0),
+        p1: nalgebra::Vector3::new(5.0, 2.0, 0.0),
     };
     scene.add(Box::new(simple_line));
     scene.add(Box::new(simple_line2));
@@ -137,11 +138,11 @@ fn test_polyline_image() {
     let polyline = PolyLine {
         stroke_width: 0.2,
         points: vec![
-            ndarray::arr1(&[0.0, 0.0]),
-            ndarray::arr1(&[3.5, 1.0]),
-            ndarray::arr1(&[3.5, 3.5]),
-            ndarray::arr1(&[4.0, 4.0]),
-            ndarray::arr1(&[6.0, 4.0]),
+            nalgebra::Vector3::new(0.0, 0.0, 0.0),
+            nalgebra::Vector3::new(3.5, 1.0, 0.0),
+            nalgebra::Vector3::new(3.5, 3.5, 0.0),
+            nalgebra::Vector3::new(4.0, 4.0, 0.0),
+            nalgebra::Vector3::new(6.0, 4.0, 0.0),
         ],
     };
     scene.add(Box::new(polyline));
@@ -155,10 +156,10 @@ fn test_rectangle_image() {
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
-        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
-        p1: ndarray::arr1(&[3.0, 0.0, 0.0]),
-        p2: ndarray::arr1(&[3.0, 3.0, 0.0]),
-        p3: ndarray::arr1(&[0.0, 3.0, 0.0]),
+        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
+        p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
+        p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
     };
     scene.add(Box::new(rectangle));
     scene.save_png(&mut ctx, "rectangle.png");
@@ -169,7 +170,7 @@ struct AnimationConfig {
     total_frames: u32,
 }
 struct Movement {
-    displacement: ndarray::Array1<f32>,
+    displacement: nalgebra::Vector3<GMFloat>,
     animation_config: AnimationConfig,
     mobject: Box<dyn Mobject>,
 }
@@ -190,10 +191,10 @@ fn write_frame() {
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
-        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
-        p1: ndarray::arr1(&[3.0, 0.0, 0.0]),
-        p2: ndarray::arr1(&[3.0, 3.0, 0.0]),
-        p3: ndarray::arr1(&[0.0, 3.0, 0.0]),
+        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
+        p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
+        p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
     };
     scene.add(Box::new(rectangle));
 
@@ -217,7 +218,7 @@ fn write_frame() {
     };
     for _ in 0..480 {
         let now = std::time::Instant::now();
-        scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));
+        scene.mobjects[0].move_this(nalgebra::Vector3::new(0.01, 0.0, 0.0));
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);
@@ -237,10 +238,10 @@ fn thread_frame_pass() {
     let mut scene = Scene::new();
     let rectangle = Rectangle {
         stroke_width: 0.2,
-        p0: ndarray::arr1(&[0.0, 0.0, 0.0]),
-        p1: ndarray::arr1(&[3.0, 0.0, 0.0]),
-        p2: ndarray::arr1(&[3.0, 3.0, 0.0]),
-        p3: ndarray::arr1(&[0.0, 3.0, 0.0]),
+        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
+        p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
+        p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
     };
     scene.add(Box::new(rectangle));
 
@@ -276,7 +277,7 @@ fn thread_frame_pass() {
     });
     for _ in 0..480 {
         let now = std::time::Instant::now();
-        scene.mobjects[0].move_this(ndarray::arr1(&[0.01, 0.0, 0.0]));
+        scene.mobjects[0].move_this(nalgebra::Vector3::new(0.01, 0.0, 0.0));
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);

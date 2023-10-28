@@ -8,7 +8,4 @@ edition = "2021"
 [dependencies]
 raqote = "0.8"
 
-ndarray = {version = "0.15", features = ["serde", "blas"]}
-blas-src = { version = "0.8", features = ["openblas"] }
-openblas-src = { version = "0.10", features = ["cblas", "system"] }
-ndarray-linalg = { version = "0.16.0", features = ["openblas-system"] }
+nalgebra = "*"
