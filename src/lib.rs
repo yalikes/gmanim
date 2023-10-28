@@ -2,6 +2,7 @@
 
 mod mobjects;
 mod video_backend;
+mod math_utils;
 
 use mobjects::Mobject;
 struct Color {
