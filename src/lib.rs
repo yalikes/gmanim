@@ -3,6 +3,7 @@
 mod mobjects;
 mod video_backend;
 mod math_utils;
+mod camera;
 
 use mobjects::Mobject;
 
@@ -82,8 +83,8 @@ impl Context {
 }
 
 #[derive(Default)]
-struct Scene {
-    mobjects: Vec<Box<dyn Mobject>>,
+pub struct Scene {
+    pub mobjects: Vec<Box<dyn Mobject>>,
 }
 
 impl Scene {
