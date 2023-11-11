@@ -3,7 +3,8 @@ pub trait Mobject: Rotate + SimpleMove + Draw {}
 use crate::{Context, ContextType, SceneConfig, GMFloat};
 
 use nalgebra::Vector3;
-
+pub mod text;
+pub mod svg_shape;
 pub trait Draw {
     //draw shape without fill()
     fn draw(&self, ctx: &mut Context);
@@ -83,6 +84,8 @@ pub struct Rectangle {
     pub p2: Vector3<GMFloat>,
     pub p3: Vector3<GMFloat>,
 }
+
+
 
 #[inline]
 pub fn coordinate_change_x(position_x: f32, scene_width: f32) -> f32 {
