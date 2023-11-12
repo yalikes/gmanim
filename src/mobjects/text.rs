@@ -8,12 +8,13 @@ use crate::mobjects::Draw;
 use crate::{ContextType, GMFloat};
 use nalgebra::Vector3;
 
-use super::{coordinate_change_x, coordinate_change_y, Mobject, Rotate, SimpleMove};
+use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Rotate, SimpleMove};
 
 pub struct Text {
     pub text: String,
     pub position: Vector3<GMFloat>,
     pub font_size: GMFloat,
+    pub draw_config: DrawConfig,
 }
 
 pub enum FontConfig {
@@ -65,10 +66,10 @@ impl Draw for Text {
                             let idx_x = (x + bounding_box.min.x as u32 - min_x as u32) as usize;
                             let idx_y = (y + bounding_box.min.y as u32 - min_x as u32) as usize;
                             data[idx_x + idx_y * img_width] = u32::from_be_bytes([
-                                (255 as f32 * v) as u8,
-                                (255 as f32 * v) as u8,
-                                (255 as f32 * v) as u8,
-                                (255 as f32 * v) as u8,
+                                (self.draw_config.color.a as f32 * v) as u8,
+                                (self.draw_config.color.r as f32 * v) as u8,
+                                (self.draw_config.color.g as f32 * v) as u8,
+                                (self.draw_config.color.b as f32 * v) as u8,
                             ]);
                         });
                     }
@@ -110,6 +111,7 @@ fn test_draw_text() {
         text: "我去".to_owned(),
         position: Vector3::new(0.0, 0.0, 0.0),
         font_size: 600.0,
+        draw_config: Default::default()
     };
     text.draw(&mut ctx);
     match &mut ctx.ctx_type {

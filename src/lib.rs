@@ -1,19 +1,39 @@
 #![allow(unused)]
 
+mod math_utils;
 mod mobjects;
 mod video_backend;
-mod math_utils;
 
 use mobjects::Mobject;
 
 use crate::mobjects::text::Text;
 
 type GMFloat = f32;
+#[derive(Clone, Copy, Debug)]
 struct Color {
-    r: f32,
-    g: f32,
-    b: f32,
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 }
+
+impl Into<raqote::SolidSource> for Color {
+    fn into(self) -> raqote::SolidSource {
+        raqote::SolidSource {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+            a: self.a,
+        }
+    }
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Self { r: 0x33, g: 0xcc, b: 0xff, a: 0xff }
+    }   
+}
+
 pub enum ContextType {
     Raqote(raqote::DrawTarget), // we always have cairo as a fallback
     VULKAN,
@@ -118,14 +138,14 @@ fn test_simple_line_image() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let simple_line = SimpleLine {
-        stroke_width: 0.2,
         p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
         p1: nalgebra::Vector3::new(1.0, 1.0, 0.0),
+        ..Default::default()
     };
     let simple_line2 = SimpleLine {
-        stroke_width: 0.2,
         p0: nalgebra::Vector3::new(1.0, 1.0, 0.0),
         p1: nalgebra::Vector3::new(5.0, 2.0, 0.0),
+        ..Default::default()
     };
     scene.add(Box::new(simple_line));
     scene.add(Box::new(simple_line2));
@@ -138,7 +158,6 @@ fn test_polyline_image() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let polyline = PolyLine {
-        stroke_width: 0.2,
         points: vec![
             nalgebra::Vector3::new(0.0, 0.0, 0.0),
             nalgebra::Vector3::new(3.5, 1.0, 0.0),
@@ -146,6 +165,7 @@ fn test_polyline_image() {
             nalgebra::Vector3::new(4.0, 4.0, 0.0),
             nalgebra::Vector3::new(6.0, 4.0, 0.0),
         ],
+        ..Default::default()
     };
     scene.add(Box::new(polyline));
     scene.save_png(&mut ctx, "poly_line.png");
@@ -157,11 +177,11 @@ fn test_rectangle_image() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
-        stroke_width: 0.2,
         p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
         p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
         p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
         p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
+        ..Default::default()
     };
     scene.add(Box::new(rectangle));
     scene.save_png(&mut ctx, "rectangle.png");
@@ -192,11 +212,11 @@ fn write_frame() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
-        stroke_width: 0.2,
         p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
         p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
         p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
         p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
+        ..Default::default()
     };
     scene.add(Box::new(rectangle));
 
@@ -239,11 +259,11 @@ fn thread_frame_pass() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
-        stroke_width: 0.2,
         p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
         p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
         p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
         p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
+        ..Default::default()
     };
     scene.add(Box::new(rectangle));
 
