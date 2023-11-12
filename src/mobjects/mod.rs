@@ -5,6 +5,7 @@ use crate::{Color, Context, ContextType, GMFloat, SceneConfig};
 use nalgebra::{point, Vector3};
 pub mod svg_shape;
 pub mod text;
+pub mod formula;
 
 pub trait SimpleMove {
     fn move_this(&mut self, movement: Vector3<GMFloat>) {}
