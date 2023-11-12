@@ -6,12 +6,14 @@ use rusttype::{point, Font, Scale};
 
 use crate::mobjects::Draw;
 use crate::{ContextType, GMFloat};
-use nalgebra::Vector2;
+use nalgebra::Vector3;
+
+use super::{coordinate_change_x, coordinate_change_y, Mobject, Rotate, SimpleMove};
 
 pub struct Text {
-    text: String,
-    position: Vector2<GMFloat>,
-    font_size: GMFloat,
+    pub text: String,
+    pub position: Vector3<GMFloat>,
+    pub font_size: GMFloat,
 }
 
 pub enum FontConfig {
@@ -65,15 +67,17 @@ impl Draw for Text {
                             data[idx_x + idx_y * img_width] = u32::from_be_bytes([
                                 (255 as f32 * v) as u8,
                                 (255 as f32 * v) as u8,
-                                0,
-                                0,
+                                (255 as f32 * v) as u8,
+                                (255 as f32 * v) as u8,
                             ]);
                         });
                     }
                 }
                 dt.draw_image_at(
-                    10.0,
-                    10.0,
+                    coordinate_change_x(self.position.x, ctx.scene_config.width)
+                        * ctx.scene_config.scale_factor,
+                    coordinate_change_y(self.position.y, ctx.scene_config.height)
+                        * ctx.scene_config.scale_factor,
                     &Image {
                         width: img_width as i32,
                         height: img_height as i32,
@@ -87,13 +91,24 @@ impl Draw for Text {
     }
 }
 
+impl Mobject for Text {}
+
+impl Rotate for Text {
+    fn rotate(&mut self, axis: nalgebra::Vector3<GMFloat>, value: f32) {}
+}
+
+impl SimpleMove for Text {
+    fn move_this(&mut self, movement: nalgebra::Vector3<GMFloat>) {
+        self.position += movement;
+    }
+}
 #[test]
 fn test_draw_text() {
     let mut ctx = crate::Context::default();
     let mut scene = crate::Scene::new();
     let text = Text {
         text: "我去".to_owned(),
-        position: Vector2::new(0.0, 0.0),
+        position: Vector3::new(0.0, 0.0, 0.0),
         font_size: 600.0,
     };
     text.draw(&mut ctx);

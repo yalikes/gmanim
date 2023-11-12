@@ -6,6 +6,8 @@ mod math_utils;
 
 use mobjects::Mobject;
 
+use crate::mobjects::text::Text;
+
 type GMFloat = f32;
 struct Color {
     r: f32,
