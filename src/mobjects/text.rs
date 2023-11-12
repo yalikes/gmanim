@@ -1,7 +1,7 @@
 use std::fs;
 use std::io::Read;
 
-use raqote::{Image, DrawOptions};
+use raqote::{DrawOptions, Image};
 use rusttype::{point, Font, Scale};
 
 use crate::mobjects::Draw;
@@ -41,11 +41,11 @@ impl Draw for Text {
                 let v_metrics = font.v_metrics(scale);
                 // to see why we make start at (0.0, v_metrics.ascent), take a look at documentation
                 let glyphs: Vec<_> = font
-                    .layout(&self.text, scale, point(0.0, 0.0 + v_metrics.ascent))
+                    .layout(&self.text, scale, point(0.0, 0.0 + v_metrics.ascent)) // maybe I need some padding here
                     .collect();
 
                 let img_height = (v_metrics.ascent - v_metrics.descent).ceil() as usize;
-                let img_width = {
+                let (img_width, min_x) = {
                     let min_x = glyphs
                         .first()
                         .map(|g| g.pixel_bounding_box().unwrap().min.x)
@@ -54,14 +54,14 @@ impl Draw for Text {
                         .last()
                         .map(|g| g.pixel_bounding_box().unwrap().max.x)
                         .unwrap();
-                    (max_x - min_x) as usize
+                    ((max_x - min_x) as usize, min_x)
                 }; // great, rusttype help me to calculate advance width and Kerning Pair
                 let mut data = vec![0 as u32; img_width * img_height];
                 for glyph in glyphs {
                     if let Some(bounding_box) = glyph.pixel_bounding_box() {
                         glyph.draw(|x, y, v| {
-                            let idx_x = (x + bounding_box.min.x as u32) as usize;
-                            let idx_y = (y + bounding_box.min.y as u32) as usize;
+                            let idx_x = (x + bounding_box.min.x as u32 - min_x as u32) as usize;
+                            let idx_y = (y + bounding_box.min.y as u32 - min_x as u32) as usize;
                             data[idx_x + idx_y * img_width] = u32::from_be_bytes([
                                 (255 as f32 * v) as u8,
                                 (255 as f32 * v) as u8,
@@ -71,11 +71,16 @@ impl Draw for Text {
                         });
                     }
                 }
-                dt.draw_image_at(10.0, 10.0, &Image{
-                    width: img_width as i32,
-                    height: img_height as i32,
-                    data: &data
-                }, &DrawOptions::default())
+                dt.draw_image_at(
+                    10.0,
+                    10.0,
+                    &Image {
+                        width: img_width as i32,
+                        height: img_height as i32,
+                        data: &data,
+                    },
+                    &DrawOptions::default(),
+                )
             }
             _ => {}
         }
@@ -87,7 +92,7 @@ fn test_draw_text() {
     let mut ctx = crate::Context::default();
     let mut scene = crate::Scene::new();
     let text = Text {
-        text: "我去,怎么回事".to_owned(),
+        text: "我去".to_owned(),
         position: Vector2::new(0.0, 0.0),
         font_size: 600.0,
     };
