@@ -6,6 +6,7 @@ use nalgebra::{point, Vector3};
 pub mod svg_shape;
 pub mod text;
 pub mod formula;
+pub mod group;
 
 pub trait SimpleMove {
     fn move_this(&mut self, movement: Vector3<GMFloat>) {}
