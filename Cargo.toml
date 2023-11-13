@@ -10,3 +10,4 @@ raqote = "0.8"
 
 nalgebra = "*"
 rusttype = "*"
+usvg = "*"

@@ -7,13 +7,14 @@ pub mod svg_shape;
 pub mod text;
 pub mod formula;
 pub mod group;
+pub mod path;
 
 pub trait SimpleMove {
     fn move_this(&mut self, movement: Vector3<GMFloat>) {}
 }
 
 pub trait Rotate {
-    fn rotate(&mut self, axis: Vector3<GMFloat>, value: f32);
+    fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat);
 }
 
 pub trait Draw {
@@ -95,11 +96,11 @@ impl Draw for Rectangle {
                     coordinate_change_x(self.p3[(0)], ctx.scene_config.width) * scale_factor,
                     coordinate_change_y(self.p3[(1)], ctx.scene_config.height) * scale_factor,
                 );
-                pb.move_to(p0.0, p0.1);
-                pb.line_to(p1.0, p1.1);
-                pb.line_to(p2.0, p2.1);
-                pb.line_to(p3.0, p3.1);
-                pb.line_to(p0.0, p0.1);
+                pb.move_to(p0.0 as f32, p0.1 as f32);
+                pb.line_to(p1.0 as f32, p1.1 as f32);
+                pb.line_to(p2.0 as f32, p2.1 as f32);
+                pb.line_to(p3.0 as f32, p3.1 as f32);
+                pb.line_to(p0.0 as f32, p0.1 as f32);
                 let path = pb.finish();
                 dt.stroke(
                     &path,
@@ -107,7 +108,7 @@ impl Draw for Rectangle {
                     &raqote::StrokeStyle {
                         cap: raqote::LineCap::Round,
                         join: raqote::LineJoin::Round,
-                        width: self.draw_config.stoke_width * scale_factor,
+                        width: (self.draw_config.stoke_width * scale_factor) as f32,
                         ..Default::default()
                     },
                     &raqote::DrawOptions::new(),
@@ -146,7 +147,7 @@ impl SimpleMove for SimpleLine {
 }
 
 impl Rotate for SimpleLine {
-    fn rotate(&mut self, axis: Vector3<GMFloat>, value: f32) {}
+    fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat) {}
 }
 
 impl Draw for SimpleLine {
@@ -163,8 +164,8 @@ impl Draw for SimpleLine {
                     coordinate_change_x(self.p1[(0)], ctx.scene_config.width) * scale_factor,
                     coordinate_change_y(self.p1[(1)], ctx.scene_config.height) * scale_factor,
                 );
-                pb.move_to(p0.0, p0.1);
-                pb.line_to(p1.0, p1.1);
+                pb.move_to(p0.0 as f32, p0.1 as f32);
+                pb.line_to(p1.0 as f32, p1.1 as f32);
                 let path = pb.finish();
                 dt.stroke(
                     &path,
@@ -172,7 +173,7 @@ impl Draw for SimpleLine {
                     &raqote::StrokeStyle {
                         cap: raqote::LineCap::Round,
                         join: raqote::LineJoin::Round,
-                        width: self.draw_config.stoke_width * scale_factor,
+                        width: (self.draw_config.stoke_width * scale_factor) as f32,
                         ..Default::default()
                     },
                     &raqote::DrawOptions::new(),
@@ -229,13 +230,13 @@ impl Draw for PolyLine {
                     coordinate_change_y(self.points[0][(1)], ctx.scene_config.height)
                         * scale_factor,
                 );
-                pb.move_to(p0.0, p0.1);
+                pb.move_to(p0.0 as f32, p0.1 as f32);
                 for p in self.points[1..].iter() {
                     let point = (
                         coordinate_change_x(p[(0)], ctx.scene_config.width) * scale_factor,
                         coordinate_change_y(p[(1)], ctx.scene_config.height) * scale_factor,
                     );
-                    pb.line_to(point.0, point.1);
+                    pb.line_to(point.0 as f32, point.1 as f32);
                 }
                 let path = pb.finish();
                 dt.stroke(
@@ -244,7 +245,7 @@ impl Draw for PolyLine {
                     &raqote::StrokeStyle {
                         cap: raqote::LineCap::Round,
                         join: raqote::LineJoin::Round,
-                        width: self.draw_config.stoke_width * scale_factor,
+                        width: (self.draw_config.stoke_width * scale_factor) as f32,
                         ..Default::default()
                     },
                     &raqote::DrawOptions::new(),
@@ -264,11 +265,11 @@ pub fn rotate_matrix(axis: Vector3<GMFloat>, theta: GMFloat) {
 }
 
 #[inline]
-pub fn coordinate_change_x(position_x: f32, scene_width: f32) -> f32 {
+pub fn coordinate_change_x(position_x: GMFloat, scene_width: GMFloat) -> GMFloat {
     scene_width / 2.0 + position_x
 }
 
 #[inline]
-pub fn coordinate_change_y(position_y: f32, scene_height: f32) -> f32 {
+pub fn coordinate_change_y(position_y: GMFloat, scene_height: GMFloat) -> GMFloat {
     scene_height / 2.0 - position_y
 }

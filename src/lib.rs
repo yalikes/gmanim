@@ -42,11 +42,11 @@ pub enum ContextType {
 }
 
 pub struct SceneConfig {
-    width: f32,
-    height: f32,
+    width: GMFloat,
+    height: GMFloat,
     output_width: u32,
     output_height: u32,
-    scale_factor: f32,
+    scale_factor: GMFloat,
 }
 
 pub struct Context {

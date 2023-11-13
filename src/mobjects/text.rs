@@ -40,7 +40,7 @@ impl Draw for Text {
 
                 let font = Font::try_from_bytes(&font_data_data)
                     .expect("failed to parse font file content");
-                let scale = Scale::uniform(self.font_size);
+                let scale = Scale::uniform(self.font_size as f32);
                 let v_metrics = font.v_metrics(scale);
                 // to see why we make start at (0.0, v_metrics.ascent), take a look at documentation
                 let glyphs: Vec<_> = font
@@ -75,10 +75,10 @@ impl Draw for Text {
                     }
                 }
                 dt.draw_image_at(
-                    coordinate_change_x(self.position.x, ctx.scene_config.width)
-                        * ctx.scene_config.scale_factor,
-                    coordinate_change_y(self.position.y, ctx.scene_config.height)
-                        * ctx.scene_config.scale_factor,
+                    (coordinate_change_x(self.position.x, ctx.scene_config.width)
+                        * ctx.scene_config.scale_factor) as f32,
+                    (coordinate_change_y(self.position.y, ctx.scene_config.height)
+                        * ctx.scene_config.scale_factor) as f32,
                     &Image {
                         width: img_width as i32,
                         height: img_height as i32,
@@ -95,7 +95,7 @@ impl Draw for Text {
 impl Mobject for Text {}
 
 impl Rotate for Text {
-    fn rotate(&mut self, axis: nalgebra::Vector3<GMFloat>, value: f32) {}
+    fn rotate(&mut self, axis: nalgebra::Vector3<GMFloat>, value: GMFloat) {}
 }
 
 impl SimpleMove for Text {
@@ -111,7 +111,7 @@ fn test_draw_text() {
         text: "我去".to_owned(),
         position: Vector3::new(0.0, 0.0, 0.0),
         font_size: 600.0,
-        draw_config: Default::default()
+        draw_config: Default::default(),
     };
     text.draw(&mut ctx);
     match &mut ctx.ctx_type {

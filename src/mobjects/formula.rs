@@ -33,7 +33,7 @@ pub fn compile_to_svg(typst_file_path: &str, svg_file_path: &str) {
 #[test]
 fn test_write_svg() {
     let f = Formula {
-        formula_text: "e^(pi i)+1=0".to_owned(),
+        formula_text: "pi".to_owned(),
     };
     let typst_path = "formula.typst";
     f.write_to_typst(typst_path);

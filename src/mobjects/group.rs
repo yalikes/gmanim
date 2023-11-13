@@ -1,3 +1,5 @@
+use crate::GMFloat;
+
 use super::{Draw, Mobject, Rotate, SimpleMove};
 
 pub struct MobjectGroup {
@@ -13,7 +15,7 @@ impl SimpleMove for MobjectGroup {
 }
 
 impl Rotate for MobjectGroup {
-    fn rotate(&mut self, axis: nalgebra::Vector3<crate::GMFloat>, value: f32) {
+    fn rotate(&mut self, axis: nalgebra::Vector3<crate::GMFloat>, value: GMFloat) {
         for m in &mut self.mobjects {
             m.rotate(axis, value);
         }
