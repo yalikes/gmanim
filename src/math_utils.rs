@@ -1,9 +1,9 @@
-use std::ops::AddAssign;
-
 use nalgebra::Vector2;
-use raqote::{PathBuilder, SolidSource, StrokeStyle};
 
-use crate::{mobjects::{coordinate_change_x, coordinate_change_y}, Context, ContextType, GMFloat};
+use crate::{
+    mobjects::{coordinate_change_x, coordinate_change_y},
+    Color, Context, ContextType, GMFloat,
+};
 
 pub fn bezier_curve(point_list: &[Vector2<GMFloat>], t: GMFloat) -> Vector2<GMFloat> {
     if point_list.len() < 2 {
@@ -95,14 +95,9 @@ fn test_bezier_curve() {
     let p1 = Vector2::new(0.5, 1.0);
     let p2 = Vector2::new(1.0, 0.0);
     let mut ctx = Context::default();
-    if let ContextType::Raqote(dt) = &mut ctx.ctx_type {
-        dt.clear(SolidSource {
-            r: 0x00,
-            g: 0x00,
-            b: 0x00,
-            a: 0xff,
-        });
-        let mut pb = PathBuilder::new();
+    if let ContextType::TinySKIA(pixmap) = &mut ctx.ctx_type {
+        pixmap.fill(tiny_skia::Color::from_rgba8(0, 0, 0, 0xff));
+        let mut pb = tiny_skia::PathBuilder::new();
         pb.move_to(
             coordinate_change_x(p0.x, ctx.scene_config.width) * ctx.scene_config.scale_factor,
             coordinate_change_y(p0.y, ctx.scene_config.height) * ctx.scene_config.scale_factor,
@@ -118,23 +113,22 @@ fn test_bezier_curve() {
                 coordinate_change_y(p.y, ctx.scene_config.height) * ctx.scene_config.scale_factor,
             );
         }
-        let path = pb.finish();
-        dt.stroke(
+
+        let path = pb.finish().unwrap();
+
+        let mut stroke = tiny_skia::Stroke::default();
+        stroke.width = 6.0;
+        stroke.line_cap = tiny_skia::LineCap::Round;
+        let mut paint = tiny_skia::Paint::default();
+        paint.set_color(Color::default().into());
+
+        pixmap.stroke_path(
             &path,
-            &raqote::Source::Solid(SolidSource {
-                r: 0xff,
-                g: 0xff,
-                b: 0,
-                a: 0xff,
-            }),
-            &&raqote::StrokeStyle {
-                cap: raqote::LineCap::Round,
-                join: raqote::LineJoin::Round,
-                width: (0.02 * ctx.scene_config.scale_factor) as f32,
-                ..Default::default()
-            },
-            &raqote::DrawOptions::new(),
+            &paint,
+            &stroke,
+            tiny_skia::Transform::identity(),
+            None,
         );
-        dt.write_png("test_bezier_curve.png");
+        pixmap.save_png("test_bezier_curve.png");
     }
 }

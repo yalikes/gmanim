@@ -1,7 +1,6 @@
 use std::fs;
 use std::io::Read;
 
-use raqote::{DrawOptions, Image};
 use rusttype::{point, Font, Scale};
 
 use crate::mobjects::Draw;
@@ -29,7 +28,7 @@ impl Draw for Text {
             return; //this is no text to draw
         }
         match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
+            ContextType::TinySKIA(pixmap) => {
                 // let width;
                 // let height;
                 let mut f = fs::File::open("/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc")
@@ -74,18 +73,19 @@ impl Draw for Text {
                         });
                     }
                 }
-                dt.draw_image_at(
-                    (coordinate_change_x(self.position.x, ctx.scene_config.width)
-                        * ctx.scene_config.scale_factor) as f32,
-                    (coordinate_change_y(self.position.y, ctx.scene_config.height)
-                        * ctx.scene_config.scale_factor) as f32,
-                    &Image {
-                        width: img_width as i32,
-                        height: img_height as i32,
-                        data: &data,
-                    },
-                    &DrawOptions::default(),
-                )
+                // pixmap.draw_pixmap(x, y, pixmap, paint, transform, mask);
+                // pixmap.draw_image_at(
+                //     (coordinate_change_x(self.position.x, ctx.scene_config.width)
+                //         * ctx.scene_config.scale_factor) as f32,
+                //     (coordinate_change_y(self.position.y, ctx.scene_config.height)
+                //         * ctx.scene_config.scale_factor) as f32,
+                //     &Image {
+                //         width: img_width as i32,
+                //         height: img_height as i32,
+                //         data: &data,
+                //     },
+                //     &DrawOptions::default(),
+                // )
             }
             _ => {}
         }
@@ -115,8 +115,8 @@ fn test_draw_text() {
     };
     text.draw(&mut ctx);
     match &mut ctx.ctx_type {
-        ContextType::Raqote(dt) => {
-            dt.write_png("text_render.png");
+        ContextType::TinySKIA(pixmap) => {
+            pixmap.save_png("text_render.png");
         }
         _ => {}
     }

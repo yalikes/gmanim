@@ -3,11 +3,12 @@ pub trait Mobject: Rotate + SimpleMove + Draw {}
 use crate::{Color, Context, ContextType, GMFloat, SceneConfig};
 
 use nalgebra::{point, Vector3};
-pub mod svg_shape;
-pub mod text;
+use tiny_skia::{LineCap, Paint, Stroke, StrokeDash, LineJoin};
 pub mod formula;
 pub mod group;
 pub mod path;
+pub mod svg_shape;
+pub mod text;
 
 pub trait SimpleMove {
     fn move_this(&mut self, movement: Vector3<GMFloat>) {}
@@ -38,8 +39,6 @@ impl Default for DrawConfig {
         }
     }
 }
-
-
 
 pub struct Rectangle {
     pub p0: Vector3<GMFloat>,
@@ -77,9 +76,9 @@ impl Rotate for Rectangle {
 impl Draw for Rectangle {
     fn draw(self: &Self, ctx: &mut Context) {
         match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
+            ContextType::TinySKIA(pixmap) => {
                 let scale_factor = ctx.scene_config.scale_factor;
-                let mut pb = raqote::PathBuilder::new();
+                let mut pb = tiny_skia::PathBuilder::new();
                 let p0 = (
                     coordinate_change_x(self.p0[(0)], ctx.scene_config.width) * scale_factor,
                     coordinate_change_y(self.p0[(1)], ctx.scene_config.height) * scale_factor,
@@ -101,17 +100,22 @@ impl Draw for Rectangle {
                 pb.line_to(p2.0 as f32, p2.1 as f32);
                 pb.line_to(p3.0 as f32, p3.1 as f32);
                 pb.line_to(p0.0 as f32, p0.1 as f32);
-                let path = pb.finish();
-                dt.stroke(
+                let path = pb.finish().unwrap();
+
+                let mut stroke = Stroke::default();
+                stroke.width = self.draw_config.stoke_width * scale_factor;
+                stroke.line_cap = LineCap::Round;
+                stroke.line_join = LineJoin::Round;
+                let mut paint = Paint::default();
+                paint.set_color(self.draw_config.color.into());
+
+                paint.anti_alias = true;
+                pixmap.stroke_path(
                     &path,
-                    &raqote::Source::Solid(self.draw_config.color.into()),
-                    &raqote::StrokeStyle {
-                        cap: raqote::LineCap::Round,
-                        join: raqote::LineJoin::Round,
-                        width: (self.draw_config.stoke_width * scale_factor) as f32,
-                        ..Default::default()
-                    },
-                    &raqote::DrawOptions::new(),
+                    &paint,
+                    &stroke,
+                    tiny_skia::Transform::identity(),
+                    None,
                 );
             }
             _ => {}
@@ -120,8 +124,6 @@ impl Draw for Rectangle {
 }
 
 impl Mobject for Rectangle {}
-
-
 
 pub struct SimpleLine {
     pub p0: Vector3<GMFloat>,
@@ -154,8 +156,8 @@ impl Draw for SimpleLine {
     fn draw(self: &Self, ctx: &mut Context) {
         let scale_factor = ctx.scene_config.scale_factor;
         match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                let mut pb = raqote::PathBuilder::new();
+            ContextType::TinySKIA(pixmap) => {
+                let mut pb = tiny_skia::PathBuilder::new();
                 let p0 = (
                     coordinate_change_x(self.p0[(0)], ctx.scene_config.width) * scale_factor,
                     coordinate_change_y(self.p0[(1)], ctx.scene_config.height) * scale_factor,
@@ -166,17 +168,21 @@ impl Draw for SimpleLine {
                 );
                 pb.move_to(p0.0 as f32, p0.1 as f32);
                 pb.line_to(p1.0 as f32, p1.1 as f32);
-                let path = pb.finish();
-                dt.stroke(
+                let path = pb.finish().unwrap();
+
+                let mut stroke = Stroke::default();
+                stroke.width = self.draw_config.stoke_width * scale_factor;
+                stroke.line_cap = LineCap::Round;
+                stroke.line_join = LineJoin::Round;
+                let mut paint = Paint::default();
+                paint.set_color(self.draw_config.color.into());
+
+                pixmap.stroke_path(
                     &path,
-                    &raqote::Source::Solid(self.draw_config.color.into()),
-                    &raqote::StrokeStyle {
-                        cap: raqote::LineCap::Round,
-                        join: raqote::LineJoin::Round,
-                        width: (self.draw_config.stoke_width * scale_factor) as f32,
-                        ..Default::default()
-                    },
-                    &raqote::DrawOptions::new(),
+                    &paint,
+                    &stroke,
+                    tiny_skia::Transform::identity(),
+                    None,
                 );
             }
             _ => {}
@@ -185,8 +191,6 @@ impl Draw for SimpleLine {
 }
 
 impl Mobject for SimpleLine {}
-
-
 
 pub struct PolyLine {
     pub points: Vec<Vector3<GMFloat>>,
@@ -223,8 +227,8 @@ impl Draw for PolyLine {
         let scale_factor = ctx.scene_config.scale_factor;
 
         match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                let mut pb = raqote::PathBuilder::new();
+            ContextType::TinySKIA(pixmap) => {
+                let mut pb = tiny_skia::PathBuilder::new();
                 let p0 = (
                     coordinate_change_x(self.points[0][(0)], ctx.scene_config.width) * scale_factor,
                     coordinate_change_y(self.points[0][(1)], ctx.scene_config.height)
@@ -238,17 +242,22 @@ impl Draw for PolyLine {
                     );
                     pb.line_to(point.0 as f32, point.1 as f32);
                 }
-                let path = pb.finish();
-                dt.stroke(
+                let path = pb.finish().unwrap();
+
+                let mut stroke = Stroke::default();
+                stroke.width = self.draw_config.stoke_width * scale_factor;
+                stroke.line_cap = LineCap::Round;
+                stroke.line_join = LineJoin::Round;
+
+                let mut paint = Paint::default();
+                paint.set_color(self.draw_config.color.into());
+
+                pixmap.stroke_path(
                     &path,
-                    &raqote::Source::Solid(self.draw_config.color.into()),
-                    &raqote::StrokeStyle {
-                        cap: raqote::LineCap::Round,
-                        join: raqote::LineJoin::Round,
-                        width: (self.draw_config.stoke_width * scale_factor) as f32,
-                        ..Default::default()
-                    },
-                    &raqote::DrawOptions::new(),
+                    &paint,
+                    &stroke,
+                    tiny_skia::Transform::identity(),
+                    None,
                 );
             }
             _ => {}
@@ -257,8 +266,6 @@ impl Draw for PolyLine {
 }
 
 impl Mobject for PolyLine {}
-
-
 
 pub fn rotate_matrix(axis: Vector3<GMFloat>, theta: GMFloat) {
     //assume axis is a unit vector

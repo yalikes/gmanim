@@ -1,7 +1,6 @@
 use std::{fs, io::Read};
 
 use nalgebra::Vector2;
-use raqote::DrawOptions;
 use tiny_skia::Transform;
 use usvg::{tiny_skia_path::PathSegment, Group, Node, NodeExt, NodeKind, TreeParsing};
 
@@ -98,8 +97,8 @@ impl Draw for SVGPath {
         let scene_width = ctx.scene_config.width;
         let scene_height = ctx.scene_config.height;
         match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                let mut pb = raqote::PathBuilder::new();
+            ContextType::TinySKIA(pixmap) => {
+                let mut pb = tiny_skia::PathBuilder::new();
                 for e in &self.elements {
                     match e {
                         PathElement::MoveTo(p) => {
@@ -151,11 +150,19 @@ impl Draw for SVGPath {
                         }
                     }
                 }
-                let path = pb.finish();
-                dt.fill(
+                let path = pb.finish().unwrap();
+
+                let mut stroke = tiny_skia::Stroke::default();
+                stroke.width = self.draw_config.stoke_width * scale_factor;
+                stroke.line_cap = tiny_skia::LineCap::Round;
+                let mut paint = tiny_skia::Paint::default();
+
+                pixmap.fill_path(
                     &path,
-                    &raqote::Source::Solid(self.draw_config.color.into()),
-                    &DrawOptions::default(),
+                    &paint,
+                    Default::default(),
+                    tiny_skia::Transform::identity(),
+                    None,
                 );
             }
             _ => {}

@@ -18,25 +18,25 @@ struct Color {
     a: u8,
 }
 
-impl Into<raqote::SolidSource> for Color {
-    fn into(self) -> raqote::SolidSource {
-        raqote::SolidSource {
-            r: self.r,
-            g: self.g,
-            b: self.b,
-            a: self.a,
-        }
+impl From<Color> for tiny_skia::Color {
+    fn from(value: Color) -> Self {
+        Self::from_rgba8(value.r, value.g, value.b, value.a)
     }
 }
 
 impl Default for Color {
     fn default() -> Self {
-        Self { r: 0x33, g: 0xcc, b: 0xff, a: 0xff }
-    }   
+        Self {
+            r: 0x33,
+            g: 0xcc,
+            b: 0xff,
+            a: 0xff,
+        }
+    }
 }
 
 pub enum ContextType {
-    Raqote(raqote::DrawTarget), // we always have cairo as a fallback
+    TinySKIA(tiny_skia::Pixmap), // we always have cairo as a fallback
     VULKAN,
     CUDA,
     HIP,
@@ -70,12 +70,10 @@ impl Default for SceneConfig {
 impl Default for Context {
     fn default() -> Self {
         let scene_config = SceneConfig::default();
-        let dt = raqote::DrawTarget::new(
-            scene_config.output_width as i32,
-            scene_config.output_height as i32,
-        );
+        let pixmap =
+            tiny_skia::Pixmap::new(scene_config.output_width, scene_config.output_height).unwrap();
         Self {
-            ctx_type: ContextType::Raqote(dt),
+            ctx_type: ContextType::TinySKIA(pixmap),
             scene_config,
         }
     }
@@ -84,13 +82,8 @@ impl Default for Context {
 impl Context {
     fn clear_transparent(&mut self) {
         match &mut self.ctx_type {
-            ContextType::Raqote(dt) => {
-                dt.clear(raqote::SolidSource {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                });
+            ContextType::TinySKIA(pixmap) => {
+                pixmap.fill(tiny_skia::Color::from_rgba8(0, 0, 0, 0xff));
             }
             _ => {}
         }
@@ -98,7 +91,7 @@ impl Context {
 
     fn image_bytes(&self) -> &[u8] {
         match &self.ctx_type {
-            ContextType::Raqote(dt) => dt.get_data_u8(),
+            ContextType::TinySKIA(pixmap) => pixmap.data(),
             _ => &[],
         }
     }
@@ -121,8 +114,8 @@ impl Scene {
         }
 
         match &mut ctx.ctx_type {
-            ContextType::Raqote(dt) => {
-                dt.write_png(file_path);
+            ContextType::TinySKIA(pixmap) => {
+                pixmap.save_png(file_path);
             }
             _ => {}
         }
@@ -246,8 +239,8 @@ fn write_frame() {
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);
         }
-        video_backend_var.write_frame(ctx.image_bytes());
-        // println!("takes {:?}", now.elapsed());
+        // video_backend_var.write_frame(ctx.image_bytes());
+        println!("takes {:?}", now.elapsed());
     }
 }
 
