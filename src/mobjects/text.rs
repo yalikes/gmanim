@@ -7,7 +7,7 @@ use crate::mobjects::Draw;
 use crate::{ContextType, GMFloat};
 use nalgebra::Vector3;
 
-use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Rotate, SimpleMove};
+use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Rotate, SimpleMove, Transform};
 
 pub struct Text {
     pub text: String,
@@ -20,6 +20,10 @@ pub enum FontConfig {
     Default,
     FontName(String),
     FontFile(String),
+}
+
+impl Transform for Text {
+    
 }
 
 impl Draw for Text {
@@ -91,18 +95,6 @@ impl Draw for Text {
                     tiny_skia::Transform::identity(),
                     None,
                 );
-                // pixmap.draw_image_at(
-                // (coordinate_change_x(self.position.x, ctx.scene_config.width)
-                // * ctx.scene_config.scale_factor) as f32,
-                //     (coordinate_change_y(self.position.y, ctx.scene_config.height)
-                //         * ctx.scene_config.scale_factor) as f32,
-                //     &Image {
-                //         width: img_width as i32,
-                //         height: img_height as i32,
-                //         data: &data,
-                //     },
-                //     &DrawOptions::default(),
-                // )
             }
             _ => {}
         }
@@ -111,15 +103,6 @@ impl Draw for Text {
 
 impl Mobject for Text {}
 
-impl Rotate for Text {
-    fn rotate(&mut self, axis: nalgebra::Vector3<GMFloat>, value: GMFloat) {}
-}
-
-impl SimpleMove for Text {
-    fn move_this(&mut self, movement: nalgebra::Vector3<GMFloat>) {
-        self.position += movement;
-    }
-}
 #[test]
 fn test_draw_text() {
     let mut ctx = crate::Context::default();

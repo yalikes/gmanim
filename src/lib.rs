@@ -132,13 +132,13 @@ fn test_simple_line_image() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let simple_line = SimpleLine {
-        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
-        p1: nalgebra::Vector3::new(1.0, 1.0, 0.0),
+        p0: nalgebra::Point3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Point3::new(1.0, 1.0, 0.0),
         ..Default::default()
     };
     let simple_line2 = SimpleLine {
-        p0: nalgebra::Vector3::new(1.0, 1.0, 0.0),
-        p1: nalgebra::Vector3::new(5.0, 2.0, 0.0),
+        p0: nalgebra::Point3::new(1.0, 1.0, 0.0),
+        p1: nalgebra::Point3::new(5.0, 2.0, 0.0),
         ..Default::default()
     };
     scene.add(Box::new(simple_line));
@@ -153,11 +153,11 @@ fn test_polyline_image() {
     let mut scene = Scene::new();
     let polyline = PolyLine {
         points: vec![
-            nalgebra::Vector3::new(0.0, 0.0, 0.0),
-            nalgebra::Vector3::new(3.5, 1.0, 0.0),
-            nalgebra::Vector3::new(3.5, 3.5, 0.0),
-            nalgebra::Vector3::new(4.0, 4.0, 0.0),
-            nalgebra::Vector3::new(6.0, 4.0, 0.0),
+            nalgebra::Point3::new(0.0, 0.0, 0.0),
+            nalgebra::Point3::new(3.5, 1.0, 0.0),
+            nalgebra::Point3::new(3.5, 3.5, 0.0),
+            nalgebra::Point3::new(4.0, 4.0, 0.0),
+            nalgebra::Point3::new(6.0, 4.0, 0.0),
         ],
         ..Default::default()
     };
@@ -171,10 +171,10 @@ fn test_rectangle_image() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
-        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
-        p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
-        p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
-        p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
+        p0: nalgebra::Point3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Point3::new(3.0, 0.0, 0.0),
+        p2: nalgebra::Point3::new(3.0, 3.0, 0.0),
+        p3: nalgebra::Point3::new(0.0, 3.0, 0.0),
         ..Default::default()
     };
     scene.add(Box::new(rectangle));
@@ -206,10 +206,10 @@ fn write_frame() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
-        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
-        p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
-        p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
-        p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
+        p0: nalgebra::Point3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Point3::new(3.0, 0.0, 0.0),
+        p2: nalgebra::Point3::new(3.0, 3.0, 0.0),
+        p3: nalgebra::Point3::new(0.0, 3.0, 0.0),
         ..Default::default()
     };
     scene.add(Box::new(rectangle));
@@ -234,12 +234,15 @@ fn write_frame() {
     };
     for _ in 0..480 {
         let now = std::time::Instant::now();
-        scene.mobjects[0].move_this(nalgebra::Vector3::new(0.01, 0.0, 0.0));
+        let translation =
+            nalgebra::Matrix4::new_translation(&nalgebra::Vector3::new(0.01, 0.0, 0.0));
+        let translation = nalgebra::Transform3::<GMFloat>::from_matrix_unchecked(translation);
+        scene.mobjects[0].transform(translation);
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);
         }
-        // video_backend_var.write_frame(ctx.image_bytes());
+        video_backend_var.write_frame(ctx.image_bytes());
         println!("takes {:?}", now.elapsed());
     }
 }
@@ -253,10 +256,10 @@ fn thread_frame_pass() {
     let mut ctx = Context::default();
     let mut scene = Scene::new();
     let rectangle = Rectangle {
-        p0: nalgebra::Vector3::new(0.0, 0.0, 0.0),
-        p1: nalgebra::Vector3::new(3.0, 0.0, 0.0),
-        p2: nalgebra::Vector3::new(3.0, 3.0, 0.0),
-        p3: nalgebra::Vector3::new(0.0, 3.0, 0.0),
+        p0: nalgebra::Point3::new(0.0, 0.0, 0.0),
+        p1: nalgebra::Point3::new(3.0, 0.0, 0.0),
+        p2: nalgebra::Point3::new(3.0, 3.0, 0.0),
+        p3: nalgebra::Point3::new(0.0, 3.0, 0.0),
         ..Default::default()
     };
     scene.add(Box::new(rectangle));
@@ -293,7 +296,10 @@ fn thread_frame_pass() {
     });
     for _ in 0..480 {
         let now = std::time::Instant::now();
-        scene.mobjects[0].move_this(nalgebra::Vector3::new(0.01, 0.0, 0.0));
+        let translation =
+            nalgebra::Matrix4::new_translation(&nalgebra::Vector3::new(0.01, 0.0, 0.0));
+        let translation = nalgebra::Transform3::<GMFloat>::from_matrix_unchecked(translation);
+        scene.mobjects[0].transform(translation);
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);

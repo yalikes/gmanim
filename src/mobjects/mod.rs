@@ -1,15 +1,18 @@
-pub trait Mobject: Rotate + SimpleMove + Draw {}
+pub trait Mobject: Transform + Draw {}
 
 use crate::{Color, Context, ContextType, GMFloat, SceneConfig};
 
-use nalgebra::{point, Vector3};
-use tiny_skia::{LineCap, Paint, Stroke, StrokeDash, LineJoin};
+use nalgebra::{point, Vector3, Point3, Point};
+use tiny_skia::{LineCap, LineJoin, Paint, Stroke, StrokeDash};
 pub mod formula;
 pub mod group;
 pub mod path;
 pub mod svg_shape;
 pub mod text;
 
+pub trait Transform {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {}
+}
 pub trait SimpleMove {
     fn move_this(&mut self, movement: Vector3<GMFloat>) {}
 }
@@ -41,20 +44,20 @@ impl Default for DrawConfig {
 }
 
 pub struct Rectangle {
-    pub p0: Vector3<GMFloat>,
-    pub p1: Vector3<GMFloat>,
-    pub p2: Vector3<GMFloat>,
-    pub p3: Vector3<GMFloat>,
+    pub p0: Point3<GMFloat>,
+    pub p1: Point3<GMFloat>,
+    pub p2: Point3<GMFloat>,
+    pub p3: Point3<GMFloat>,
     pub draw_config: DrawConfig,
 }
 
 impl Default for Rectangle {
     fn default() -> Self {
         Rectangle {
-            p0: Vector3::new(0.0, 0.0, 0.0),
-            p1: Vector3::new(1.0, 0.0, 0.0),
-            p2: Vector3::new(1.0, 1.0, 0.0),
-            p3: Vector3::new(0.0, 1.0, 0.0),
+            p0: Point3::new(0.0, 0.0, 0.0),
+            p1: Point3::new(1.0, 0.0, 0.0),
+            p2: Point3::new(1.0, 1.0, 0.0),
+            p3: Point3::new(0.0, 1.0, 0.0),
             draw_config: DrawConfig::default(),
         }
     }
@@ -71,6 +74,15 @@ impl SimpleMove for Rectangle {
 
 impl Rotate for Rectangle {
     fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat) {}
+}
+
+impl Transform for Rectangle {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        self.p0 = transform * self.p0;
+        self.p1 = transform * self.p1;
+        self.p2 = transform * self.p2;
+        self.p3 = transform * self.p3;
+    }
 }
 
 impl Draw for Rectangle {
@@ -126,30 +138,26 @@ impl Draw for Rectangle {
 impl Mobject for Rectangle {}
 
 pub struct SimpleLine {
-    pub p0: Vector3<GMFloat>,
-    pub p1: Vector3<GMFloat>,
+    pub p0: Point3<GMFloat>,
+    pub p1: Point3<GMFloat>,
     pub draw_config: DrawConfig,
 }
 
 impl Default for SimpleLine {
     fn default() -> Self {
         SimpleLine {
-            p0: Vector3::new(0.0, 0.0, 0.0),
-            p1: Vector3::new(1.0, 0.0, 0.0),
+            p0: Point3::new(0.0, 0.0, 0.0),
+            p1: Point3::new(1.0, 0.0, 0.0),
             draw_config: DrawConfig::default(),
         }
     }
 }
 
-impl SimpleMove for SimpleLine {
-    fn move_this(&mut self, movement: Vector3<GMFloat>) {
-        self.p0 = self.p0.clone() + movement.clone();
-        self.p1 = self.p1.clone() + movement.clone();
-    }
-}
 
-impl Rotate for SimpleLine {
-    fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat) {}
+impl Transform for SimpleLine {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        
+    }
 }
 
 impl Draw for SimpleLine {
@@ -193,29 +201,24 @@ impl Draw for SimpleLine {
 impl Mobject for SimpleLine {}
 
 pub struct PolyLine {
-    pub points: Vec<Vector3<GMFloat>>,
+    pub points: Vec<Point3<GMFloat>>,
     pub draw_config: DrawConfig,
 }
 
 impl Default for PolyLine {
     fn default() -> Self {
         PolyLine {
-            points: vec![Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0)],
+            points: vec![Point3::new(0.0, 0.0, 0.0), Point3::new(0.0, 0.0, 0.0)],
             draw_config: DrawConfig::default(),
         }
     }
 }
 
-impl SimpleMove for PolyLine {
-    fn move_this(&mut self, movement: Vector3<GMFloat>) {
-        for i in 0..self.points.len() {
-            self.points[i] = self.points[i].clone() + movement.clone();
-        }
-    }
-}
 
-impl Rotate for PolyLine {
-    fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat) {}
+impl Transform for PolyLine {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        
+    }
 }
 
 impl Draw for PolyLine {

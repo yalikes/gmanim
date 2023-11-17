@@ -6,25 +6,17 @@ pub struct MobjectGroup {
     pub mobjects: Vec<Box<dyn Mobject>>,
 }
 
-impl SimpleMove for MobjectGroup {
-    fn move_this(&mut self, movement: nalgebra::Vector3<crate::GMFloat>) {
+impl super::Transform for MobjectGroup {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
         for m in &mut self.mobjects {
-            m.move_this(movement);
-        }
-    }
-}
-
-impl Rotate for MobjectGroup {
-    fn rotate(&mut self, axis: nalgebra::Vector3<crate::GMFloat>, value: GMFloat) {
-        for m in &mut self.mobjects {
-            m.rotate(axis, value);
+            m.transform(transform);
         }
     }
 }
 
 impl Draw for MobjectGroup {
     fn draw(&self, ctx: &mut crate::Context) {
-        for m in &self.mobjects{
+        for m in &self.mobjects {
             m.draw(ctx);
         }
     }

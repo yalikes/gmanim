@@ -91,6 +91,12 @@ impl SVGPath {
     }
 }
 
+impl super::Transform for SVGPath {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        
+    }
+}
+
 impl Draw for SVGPath {
     fn draw(&self, ctx: &mut crate::Context) {
         let scale_factor = ctx.scene_config.scale_factor;
@@ -168,14 +174,6 @@ impl Draw for SVGPath {
             _ => {}
         }
     }
-}
-
-impl Rotate for SVGPath {
-    fn rotate(&mut self, axis: nalgebra::Vector3<GMFloat>, value: GMFloat) {}
-}
-
-impl SimpleMove for SVGPath {
-    fn move_this(&mut self, movement: nalgebra::Vector3<GMFloat>) {}
 }
 
 impl Mobject for SVGPath {}
