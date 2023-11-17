@@ -156,7 +156,7 @@ impl Draw for SVGPath {
                 stroke.width = self.draw_config.stoke_width * scale_factor;
                 stroke.line_cap = tiny_skia::LineCap::Round;
                 let mut paint = tiny_skia::Paint::default();
-
+                paint.set_color(self.draw_config.color.into());
                 pixmap.fill_path(
                     &path,
                     &paint,
