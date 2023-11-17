@@ -27,6 +27,7 @@ impl Draw for Text {
         if self.text.len() == 0 {
             return; //this is no text to draw
         }
+        let scale_factor = ctx.scene_config.scale_factor;
         match &mut ctx.ctx_type {
             ContextType::TinySKIA(pixmap) => {
                 // let width;
@@ -58,25 +59,41 @@ impl Draw for Text {
                         .unwrap();
                     ((max_x - min_x) as usize, min_x)
                 }; // great, rusttype help me to calculate advance width and Kerning Pair
-                let mut data = vec![0 as u32; img_width * img_height];
+                let mut pixmap_new =
+                    tiny_skia::Pixmap::new(img_width as u32, img_height as u32).unwrap();
                 for glyph in glyphs {
                     if let Some(bounding_box) = glyph.pixel_bounding_box() {
                         glyph.draw(|x, y, v| {
                             let idx_x = (x + bounding_box.min.x as u32 - min_x as u32) as usize;
                             let idx_y = (y + bounding_box.min.y as u32 - min_x as u32) as usize;
-                            data[idx_x + idx_y * img_width] = u32::from_be_bytes([
-                                (self.draw_config.color.a as f32 * v) as u8,
-                                (self.draw_config.color.r as f32 * v) as u8,
-                                (self.draw_config.color.g as f32 * v) as u8,
-                                (self.draw_config.color.b as f32 * v) as u8,
-                            ]);
+                            let pixeles = pixmap_new.pixels_mut();
+                            pixeles[idx_x + idx_y * img_width] =
+                                tiny_skia::PremultipliedColorU8::from_rgba(
+                                    (self.draw_config.color.r as f32 * v) as u8,
+                                    (self.draw_config.color.g as f32 * v) as u8,
+                                    (self.draw_config.color.b as f32 * v) as u8,
+                                    (self.draw_config.color.a as f32 * v) as u8,
+                                )
+                                .unwrap();
                         });
                     }
                 }
-                // pixmap.draw_pixmap(x, y, pixmap, paint, transform, mask);
+
+                let paint = tiny_skia::PixmapPaint::default();
+
+                pixmap.draw_pixmap(
+                    (coordinate_change_x(self.position.x, ctx.scene_config.width) * scale_factor)
+                        as i32,
+                    (coordinate_change_y(self.position.y, ctx.scene_config.height) * scale_factor)
+                        as i32,
+                    pixmap_new.as_ref(),
+                    &paint,
+                    tiny_skia::Transform::identity(),
+                    None,
+                );
                 // pixmap.draw_image_at(
-                //     (coordinate_change_x(self.position.x, ctx.scene_config.width)
-                //         * ctx.scene_config.scale_factor) as f32,
+                // (coordinate_change_x(self.position.x, ctx.scene_config.width)
+                // * ctx.scene_config.scale_factor) as f32,
                 //     (coordinate_change_y(self.position.y, ctx.scene_config.height)
                 //         * ctx.scene_config.scale_factor) as f32,
                 //     &Image {
