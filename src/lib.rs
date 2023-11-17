@@ -9,6 +9,7 @@ use mobjects::Mobject;
 use crate::mobjects::text::Text;
 
 type GMFloat = f32;
+type Point2D = nalgebra::Vector2<GMFloat>;
 #[derive(Clone, Copy, Debug)]
 struct Color {
     r: u8,
