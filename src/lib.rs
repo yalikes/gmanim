@@ -225,7 +225,8 @@ fn write_frame() {
     use std::sync::mpsc::{Receiver, Sender};
 
     use video_backend::{
-        BgraRAWBackend, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+        FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+        ColorOrder
     };
 
     let video_config = VideoConfig {
@@ -233,6 +234,7 @@ fn write_frame() {
         framerate: 60,
         output_height: 1080,
         output_width: 1920,
+        color_order: ColorOrder::Rgba
     };
     let mut video_backend_var = VideoBackend {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
@@ -276,7 +278,7 @@ fn thread_frame_pass() {
     use std::sync::mpsc::{Receiver, Sender};
 
     use video_backend::{
-        BgraRAWBackend, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+        FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,ColorOrder
     };
 
     let video_config = VideoConfig {
@@ -284,6 +286,7 @@ fn thread_frame_pass() {
         framerate: 60,
         output_height: 1080,
         output_width: 1920,
+        color_order: ColorOrder::Rgba
     };
 
     let mut video_backend_var = VideoBackend {

@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fmt::Display;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -12,11 +13,31 @@ pub struct VideoBackend {
     pub backend_type: VideoBackendType,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum ColorOrder {
+    Bgra,
+    Rgba,
+}
+
+impl Display for ColorOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorOrder::Bgra => {
+                write!(f, "bgra")
+            }
+            ColorOrder::Rgba => {
+                write!(f, "rgba")
+            }
+        }
+    }
+}
+
 pub struct VideoConfig {
     pub filename: String,
     pub framerate: u32,
     pub output_width: u32,
     pub output_height: u32,
+    pub color_order: ColorOrder,
 }
 
 pub struct FFMPEGBackend {
@@ -105,7 +126,7 @@ impl FFMPEGBackend {
                 "-f",
                 "rawvideo",
                 "-pix_fmt",
-                "bgra",
+                &format!("{}", video_config.color_order),
                 "-s",
                 &format!(
                     "{}x{}",

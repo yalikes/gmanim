@@ -1,7 +1,6 @@
 use std::{fs, io::Read};
 
 use nalgebra::Vector2;
-use tiny_skia::Transform;
 use usvg::{tiny_skia_path::PathSegment, Group, Node, NodeExt, NodeKind, TreeParsing};
 
 use crate::{
@@ -11,7 +10,7 @@ use crate::{
 
 use super::{
     coordinate_change_x, coordinate_change_y, group::MobjectGroup, Draw, DrawConfig, Mobject,
-    Rotate, SimpleMove,
+    Rotate, SimpleMove, Transform,
 };
 
 #[derive(Debug)]
@@ -156,7 +155,7 @@ impl Draw for SVGPath {
                                     * scale_factor as f32,
                                 coordinate_change_y(p1.y as f32, ctx.scene_config.height as f32)
                                     * scale_factor as f32,
-                                coordinate_change_x(p2.x as f32, ctx.scene_config.height as f32)
+                                coordinate_change_x(p2.x as f32, ctx.scene_config.width as f32)
                                     * scale_factor as f32,
                                 coordinate_change_y(p2.y as f32, ctx.scene_config.height as f32)
                                     * scale_factor as f32,
@@ -190,7 +189,6 @@ impl Draw for SVGPath {
                 stroke.line_cap = tiny_skia::LineCap::Round;
                 let mut paint = tiny_skia::Paint::default();
                 paint.set_color(self.draw_config.color.into());
-                println!("{:?}", self.draw_config.color);
                 pixmap.fill_path(
                     &path,
                     &paint,
@@ -242,15 +240,20 @@ pub fn open_svg_file(svg_filepath: &str) -> MobjectGroup {
         }
     }
 
-    MobjectGroup {
+    let mut grp_mobj = MobjectGroup {
         mobjects: paths
             .into_iter()
             .map(|p| Box::new(p) as Box<dyn Mobject>)
             .collect(),
-    }
+    };
+
+    let scaling_matrix = nalgebra::Matrix4::new_scaling(0.1);
+    grp_mobj.transform(nalgebra::Transform::from_matrix_unchecked(scaling_matrix));
+
+    grp_mobj
 }
 
-pub fn process_path_element(e: PathSegment, transform: Transform) -> PathElement {
+pub fn process_path_element(e: PathSegment, transform: tiny_skia::Transform) -> PathElement {
     match e {
         PathSegment::MoveTo(p) => {
             let mut new_p = p.clone();
@@ -300,10 +303,7 @@ fn test_parse_svg() {
     let mut m = open_svg_file("formula.svg");
     use super::Transform;
     let scaling_matrix = nalgebra::Matrix4::new_scaling(0.99);
-    println!("{:?}", scaling_matrix);
-    m.transform(nalgebra::Transform::from_matrix_unchecked(
-        scaling_matrix
-    ));
+    m.transform(nalgebra::Transform::from_matrix_unchecked(scaling_matrix));
     let mut scene = Scene::new();
     scene.add(Box::new(m));
     let mut ctx = Context::default();
@@ -313,7 +313,8 @@ fn test_parse_svg() {
 #[test]
 fn test_svg_transform() {
     use crate::video_backend::{
-        BgraRAWBackend, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+        BgraRAWBackend, ColorOrder, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType,
+        VideoConfig,
     };
 
     let video_config = VideoConfig {
@@ -321,18 +322,16 @@ fn test_svg_transform() {
         framerate: 60,
         output_height: 1080,
         output_width: 1920,
+        color_order: ColorOrder::Rgba,
     };
 
     let mut video_backend_var = VideoBackend {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
     };
 
-
-
     let mut m = open_svg_file("formula.svg");
     use super::Transform;
     let scaling_matrix = nalgebra::Matrix4::new_scaling(0.99);
-
 
     let mut scene = Scene::new();
     scene.add(Box::new(m));
@@ -341,17 +340,12 @@ fn test_svg_transform() {
     for _ in 0..480 {
         let now = std::time::Instant::now();
 
-        scene.mobjects[0].transform(nalgebra::Transform::from_matrix_unchecked(
-            scaling_matrix
-        ));
+        scene.mobjects[0].transform(nalgebra::Transform::from_matrix_unchecked(scaling_matrix));
 
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
             m.draw(&mut ctx);
         }
         video_backend_var.write_frame(ctx.image_bytes());
-        println!("takes {:?}", now.elapsed());
     }
-
-
 }
