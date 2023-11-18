@@ -156,7 +156,8 @@ impl Default for SimpleLine {
 
 impl Transform for SimpleLine {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
-        
+        self.p0 = transform * self.p0;
+        self.p1 = transform * self.p1;
     }
 }
 
@@ -217,7 +218,9 @@ impl Default for PolyLine {
 
 impl Transform for PolyLine {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
-        
+        for p in &mut self.points{
+            *p = transform * (*p);
+        }
     }
 }
 

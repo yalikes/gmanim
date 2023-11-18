@@ -132,3 +132,13 @@ fn test_bezier_curve() {
         pixmap.save_png("test_bezier_curve.png");
     }
 }
+
+#[inline]
+pub fn point2d_to_point3d(p: nalgebra::Point2<GMFloat>) -> nalgebra::Point3<GMFloat> {
+    nalgebra::Point3::new(p.x, p.y, 0.0)
+}
+
+#[inline]
+pub fn point3d_to_point2d(p: nalgebra::Point3<GMFloat>) -> nalgebra::Point2<GMFloat> {
+    nalgebra::Point2::new(p.x, p.y)
+}

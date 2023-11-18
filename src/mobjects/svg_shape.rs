@@ -4,7 +4,10 @@ use nalgebra::Vector2;
 use tiny_skia::Transform;
 use usvg::{tiny_skia_path::PathSegment, Group, Node, NodeExt, NodeKind, TreeParsing};
 
-use crate::{Context, ContextType, GMFloat, Point2D, Scene};
+use crate::{
+    math_utils::{point2d_to_point3d, point3d_to_point2d},
+    Context, ContextType, GMFloat, Scene,
+};
 
 use super::{
     coordinate_change_x, coordinate_change_y, group::MobjectGroup, Draw, DrawConfig, Mobject,
@@ -13,10 +16,14 @@ use super::{
 
 #[derive(Debug)]
 pub enum PathElement {
-    MoveTo(Point2D),
-    LineTo(Point2D),
-    QuadTo(Point2D, Point2D),
-    CubicTo(Point2D, Point2D, Point2D),
+    MoveTo(nalgebra::Point2<GMFloat>),
+    LineTo(nalgebra::Point2<GMFloat>),
+    QuadTo(nalgebra::Point2<GMFloat>, nalgebra::Point2<GMFloat>),
+    CubicTo(
+        nalgebra::Point2<GMFloat>,
+        nalgebra::Point2<GMFloat>,
+        nalgebra::Point2<GMFloat>,
+    ),
     Close,
 }
 
@@ -46,22 +53,23 @@ impl SVGPath {
         } else {
             return;
         }
+        let start_displacement = nalgebra::Vector2::new(start_pos.x, start_pos.y);
         for e in &mut self.elements {
             match e {
                 PathElement::MoveTo(p) => {
-                    *p -= start_pos;
+                    *p -= start_displacement;
                 }
                 PathElement::LineTo(p) => {
-                    *p -= start_pos;
+                    *p -= start_displacement;
                 }
                 PathElement::QuadTo(p1, p2) => {
-                    *p1 -= start_pos;
-                    *p2 -= start_pos;
+                    *p1 -= start_displacement;
+                    *p2 -= start_displacement;
                 }
                 PathElement::CubicTo(p1, p2, p3) => {
-                    *p1 -= start_pos;
-                    *p2 -= start_pos;
-                    *p3 -= start_pos;
+                    *p1 -= start_displacement;
+                    *p2 -= start_displacement;
+                    *p3 -= start_displacement;
                 }
                 PathElement::Close => {}
             }
@@ -93,7 +101,26 @@ impl SVGPath {
 
 impl super::Transform for SVGPath {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
-        
+        for e in &mut self.elements {
+            match e {
+                PathElement::MoveTo(p) => {
+                    *p = point3d_to_point2d(transform * point2d_to_point3d(p.clone()));
+                }
+                PathElement::LineTo(p) => {
+                    *p = point3d_to_point2d(transform * point2d_to_point3d(p.clone()));
+                }
+                PathElement::QuadTo(p1, p2) => {
+                    *p1 = point3d_to_point2d(transform * point2d_to_point3d(p1.clone()));
+                    *p2 = point3d_to_point2d(transform * point2d_to_point3d(p2.clone()));
+                }
+                PathElement::CubicTo(p1, p2, p3) => {
+                    *p1 = point3d_to_point2d(transform * point2d_to_point3d(p1.clone()));
+                    *p2 = point3d_to_point2d(transform * point2d_to_point3d(p2.clone()));
+                    *p3 = point3d_to_point2d(transform * point2d_to_point3d(p3.clone()));
+                }
+                PathElement::Close => {}
+            }
+        }
     }
 }
 
@@ -163,6 +190,7 @@ impl Draw for SVGPath {
                 stroke.line_cap = tiny_skia::LineCap::Round;
                 let mut paint = tiny_skia::Paint::default();
                 paint.set_color(self.draw_config.color.into());
+                println!("{:?}", self.draw_config.color);
                 pixmap.fill_path(
                     &path,
                     &paint,
@@ -227,12 +255,18 @@ pub fn process_path_element(e: PathSegment, transform: Transform) -> PathElement
         PathSegment::MoveTo(p) => {
             let mut new_p = p.clone();
             transform.map_point(&mut new_p);
-            PathElement::MoveTo(Point2D::new(new_p.x as GMFloat, new_p.y as GMFloat))
+            PathElement::MoveTo(nalgebra::Point2::new(
+                new_p.x as GMFloat,
+                new_p.y as GMFloat,
+            ))
         }
         PathSegment::LineTo(p) => {
             let mut new_p = p.clone();
             transform.map_point(&mut new_p);
-            PathElement::LineTo(Point2D::new(new_p.x as GMFloat, new_p.y as GMFloat))
+            PathElement::LineTo(nalgebra::Point2::new(
+                new_p.x as GMFloat,
+                new_p.y as GMFloat,
+            ))
         }
         PathSegment::QuadTo(p1, p2) => {
             let mut new_p1 = p1.clone();
@@ -240,8 +274,8 @@ pub fn process_path_element(e: PathSegment, transform: Transform) -> PathElement
             transform.map_point(&mut new_p1);
             transform.map_point(&mut new_p2);
             PathElement::QuadTo(
-                Point2D::new(new_p1.x as GMFloat, new_p1.y as GMFloat),
-                Point2D::new(new_p2.x as GMFloat, new_p2.y as GMFloat),
+                nalgebra::Point2::new(new_p1.x as GMFloat, new_p1.y as GMFloat),
+                nalgebra::Point2::new(new_p2.x as GMFloat, new_p2.y as GMFloat),
             )
         }
         PathSegment::CubicTo(p1, p2, p3) => {
@@ -252,9 +286,9 @@ pub fn process_path_element(e: PathSegment, transform: Transform) -> PathElement
             transform.map_point(&mut new_p2);
             transform.map_point(&mut new_p3);
             PathElement::CubicTo(
-                Point2D::new(new_p1.x as GMFloat, new_p1.y as GMFloat),
-                Point2D::new(new_p2.x as GMFloat, new_p2.y as GMFloat),
-                Point2D::new(new_p3.x as GMFloat, new_p3.y as GMFloat),
+                nalgebra::Point2::new(new_p1.x as GMFloat, new_p1.y as GMFloat),
+                nalgebra::Point2::new(new_p2.x as GMFloat, new_p2.y as GMFloat),
+                nalgebra::Point2::new(new_p3.x as GMFloat, new_p3.y as GMFloat),
             )
         }
         PathSegment::Close => PathElement::Close,
@@ -263,9 +297,61 @@ pub fn process_path_element(e: PathSegment, transform: Transform) -> PathElement
 
 #[test]
 fn test_parse_svg() {
-    let m = open_svg_file("formula.svg");
+    let mut m = open_svg_file("formula.svg");
+    use super::Transform;
+    let scaling_matrix = nalgebra::Matrix4::new_scaling(0.99);
+    println!("{:?}", scaling_matrix);
+    m.transform(nalgebra::Transform::from_matrix_unchecked(
+        scaling_matrix
+    ));
     let mut scene = Scene::new();
     scene.add(Box::new(m));
     let mut ctx = Context::default();
     scene.save_png(&mut ctx, "formula.png");
+}
+
+#[test]
+fn test_svg_transform() {
+    use crate::video_backend::{
+        BgraRAWBackend, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+    };
+
+    let video_config = VideoConfig {
+        filename: "output.mp4".to_owned(),
+        framerate: 60,
+        output_height: 1080,
+        output_width: 1920,
+    };
+
+    let mut video_backend_var = VideoBackend {
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
+    };
+
+
+
+    let mut m = open_svg_file("formula.svg");
+    use super::Transform;
+    let scaling_matrix = nalgebra::Matrix4::new_scaling(0.99);
+
+
+    let mut scene = Scene::new();
+    scene.add(Box::new(m));
+    let mut ctx = Context::default();
+
+    for _ in 0..480 {
+        let now = std::time::Instant::now();
+
+        scene.mobjects[0].transform(nalgebra::Transform::from_matrix_unchecked(
+            scaling_matrix
+        ));
+
+        ctx.clear_transparent();
+        for m in scene.mobjects.iter() {
+            m.draw(&mut ctx);
+        }
+        video_backend_var.write_frame(ctx.image_bytes());
+        println!("takes {:?}", now.elapsed());
+    }
+
+
 }

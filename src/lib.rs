@@ -9,13 +9,18 @@ use mobjects::Mobject;
 use crate::mobjects::text::Text;
 
 type GMFloat = f32;
-type Point2D = nalgebra::Vector2<GMFloat>;
 #[derive(Clone, Copy, Debug)]
 struct Color {
     r: u8,
     g: u8,
     b: u8,
     a: u8,
+}
+
+impl Color {
+    fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
 }
 
 impl From<Color> for tiny_skia::Color {
