@@ -7,7 +7,7 @@ use crate::mobjects::Draw;
 use crate::{ContextType, GMFloat};
 use nalgebra::Vector3;
 
-use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Rotate, SimpleMove, Transform};
+use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Transform};
 
 pub struct Text {
     pub text: String,
@@ -23,7 +23,9 @@ pub enum FontConfig {
 }
 
 impl Transform for Text {
-    
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        
+    }
 }
 
 impl Draw for Text {

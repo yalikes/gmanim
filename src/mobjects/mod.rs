@@ -2,7 +2,7 @@ pub trait Mobject: Transform + Draw {}
 
 use crate::{Color, Context, ContextType, GMFloat, SceneConfig};
 
-use nalgebra::{point, Vector3, Point3, Point};
+use nalgebra::{point, Point, Point3, Vector3};
 use tiny_skia::{LineCap, LineJoin, Paint, Stroke, StrokeDash};
 pub mod formula;
 pub mod group;
@@ -11,14 +11,15 @@ pub mod svg_shape;
 pub mod text;
 
 pub trait Transform {
-    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {}
-}
-pub trait SimpleMove {
-    fn move_this(&mut self, movement: Vector3<GMFloat>) {}
-}
-
-pub trait Rotate {
-    fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat);
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>);
+    fn scale(&mut self, scale_factor: GMFloat) {
+        let scaling_matrix = nalgebra::Matrix4::new_scaling(scale_factor);
+        self.transform(nalgebra::Transform::from_matrix_unchecked(scaling_matrix));
+    }
+    fn move_this(&mut self, movement: nalgebra::Vector3<GMFloat>) {
+        let movement_matrix = nalgebra::Matrix4::new_translation(&movement);
+        self.transform(nalgebra::Transform::from_matrix_unchecked(movement_matrix));
+    }
 }
 
 pub trait Draw {
@@ -61,19 +62,6 @@ impl Default for Rectangle {
             draw_config: DrawConfig::default(),
         }
     }
-}
-
-impl SimpleMove for Rectangle {
-    fn move_this(&mut self, movement: Vector3<GMFloat>) {
-        self.p0 = self.p0.clone() + movement.clone();
-        self.p1 = self.p1.clone() + movement.clone();
-        self.p2 = self.p2.clone() + movement.clone();
-        self.p3 = self.p3.clone() + movement;
-    }
-}
-
-impl Rotate for Rectangle {
-    fn rotate(&mut self, axis: Vector3<GMFloat>, value: GMFloat) {}
 }
 
 impl Transform for Rectangle {
@@ -153,7 +141,6 @@ impl Default for SimpleLine {
     }
 }
 
-
 impl Transform for SimpleLine {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
         self.p0 = transform * self.p0;
@@ -215,10 +202,9 @@ impl Default for PolyLine {
     }
 }
 
-
 impl Transform for PolyLine {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
-        for p in &mut self.points{
+        for p in &mut self.points {
             *p = transform * (*p);
         }
     }

@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     coordinate_change_x, coordinate_change_y, group::MobjectGroup, Draw, DrawConfig, Mobject,
-    Rotate, SimpleMove, Transform,
+    Transform,
 };
 
 #[derive(Debug)]

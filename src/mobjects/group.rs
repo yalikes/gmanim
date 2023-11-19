@@ -1,6 +1,6 @@
 use crate::GMFloat;
 
-use super::{Draw, Mobject, Rotate, SimpleMove};
+use super::{Draw, Mobject};
 
 pub struct MobjectGroup {
     pub mobjects: Vec<Box<dyn Mobject>>,
