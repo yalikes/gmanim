@@ -340,11 +340,11 @@ fn test_svg_transform() {
     for _ in 0..480 {
         let now = std::time::Instant::now();
 
-        scene.mobjects[0].transform(nalgebra::Transform::from_matrix_unchecked(scaling_matrix));
+        scene.mobjects[0].borrow_mut().transform(nalgebra::Transform::from_matrix_unchecked(scaling_matrix));
 
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
-            m.draw(&mut ctx);
+            m.borrow().draw(&mut ctx);
         }
         video_backend_var.write_frame(ctx.image_bytes());
     }

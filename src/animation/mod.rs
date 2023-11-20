@@ -7,7 +7,7 @@ trait Animation: Iterator<Item = Vec<u8>> {}
 struct AnimationConfig {
     total_frame: u32,
     current_frame: u32,
-    rate_function: (),//maybe FnMut or else
+    rate_function: fn(GMFloat) -> GMFloat,
 }
 struct Movement {
     displacement: Vector3<GMFloat>,

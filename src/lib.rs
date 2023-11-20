@@ -1,9 +1,12 @@
 #![allow(unused)]
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
+mod animation;
 mod math_utils;
 mod mobjects;
 mod video_backend;
-mod animation;
 
 type GMFloat = f32;
 #[derive(Clone, Copy, Debug)]
@@ -101,7 +104,7 @@ impl Context {
 
 #[derive(Default)]
 struct Scene {
-    mobjects: Vec<Box<dyn mobjects::Mobject>>,
+    mobjects: Vec<Rc<RefCell<Box<dyn mobjects::Mobject>>>>,
 }
 
 impl Scene {
@@ -112,7 +115,7 @@ impl Scene {
         ctx.clear_transparent();
 
         for m in self.mobjects.iter() {
-            m.draw(ctx);
+            m.borrow().draw(ctx);
         }
 
         match &mut ctx.ctx_type {
@@ -124,7 +127,10 @@ impl Scene {
     }
 
     fn add(&mut self, mobject: Box<dyn mobjects::Mobject>) {
-        self.mobjects.push(mobject);
+        self.mobjects.push(Rc::new(RefCell::new(mobject)));
+    }
+    fn add_ref(&mut self, mobject_ref: Rc<RefCell<Box<dyn mobjects::Mobject>>>){
+        self.mobjects.push(mobject_ref);
     }
 }
 
@@ -183,8 +189,6 @@ fn test_rectangle_image() {
     scene.save_png(&mut ctx, "rectangle.png");
 }
 
-
-
 #[test]
 fn write_frame() {
     use mobjects::Rectangle;
@@ -207,8 +211,7 @@ fn write_frame() {
     use std::sync::mpsc::{Receiver, Sender};
 
     use video_backend::{
-        FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
-        ColorOrder
+        ColorOrder, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
     };
 
     let video_config = VideoConfig {
@@ -216,7 +219,7 @@ fn write_frame() {
         framerate: 60,
         output_height: 1080,
         output_width: 1920,
-        color_order: ColorOrder::Rgba
+        color_order: ColorOrder::Rgba,
     };
     let mut video_backend_var = VideoBackend {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
@@ -226,10 +229,10 @@ fn write_frame() {
         let translation =
             nalgebra::Matrix4::new_translation(&nalgebra::Vector3::new(0.01, 0.0, 0.0));
         let translation = nalgebra::Transform3::<GMFloat>::from_matrix_unchecked(translation);
-        scene.mobjects[0].transform(translation);
+        scene.mobjects[0].borrow_mut().transform(translation);
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
-            m.draw(&mut ctx);
+            m.borrow().draw(&mut ctx);
         }
         video_backend_var.write_frame(ctx.image_bytes());
         println!("takes {:?}", now.elapsed());
@@ -260,7 +263,7 @@ fn thread_frame_pass() {
     use std::sync::mpsc::{Receiver, Sender};
 
     use video_backend::{
-        FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,ColorOrder
+        ColorOrder, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
     };
 
     let video_config = VideoConfig {
@@ -268,7 +271,7 @@ fn thread_frame_pass() {
         framerate: 60,
         output_height: 1080,
         output_width: 1920,
-        color_order: ColorOrder::Rgba
+        color_order: ColorOrder::Rgba,
     };
 
     let mut video_backend_var = VideoBackend {
@@ -289,10 +292,10 @@ fn thread_frame_pass() {
         let translation =
             nalgebra::Matrix4::new_translation(&nalgebra::Vector3::new(0.01, 0.0, 0.0));
         let translation = nalgebra::Transform3::<GMFloat>::from_matrix_unchecked(translation);
-        scene.mobjects[0].transform(translation);
+        scene.mobjects[0].borrow_mut().transform(translation);
         ctx.clear_transparent();
         for m in scene.mobjects.iter() {
-            m.draw(&mut ctx);
+            m.borrow().draw(&mut ctx);
         }
         let data_bytes = ctx.image_bytes().to_vec();
         {
