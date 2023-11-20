@@ -5,10 +5,6 @@ mod mobjects;
 mod video_backend;
 mod animation;
 
-use mobjects::Mobject;
-
-use crate::mobjects::text::Text;
-
 type GMFloat = f32;
 #[derive(Clone, Copy, Debug)]
 struct Color {
@@ -105,7 +101,7 @@ impl Context {
 
 #[derive(Default)]
 struct Scene {
-    mobjects: Vec<Box<dyn Mobject>>,
+    mobjects: Vec<Box<dyn mobjects::Mobject>>,
 }
 
 impl Scene {
@@ -127,7 +123,7 @@ impl Scene {
         }
     }
 
-    fn add(&mut self, mobject: Box<dyn Mobject>) {
+    fn add(&mut self, mobject: Box<dyn mobjects::Mobject>) {
         self.mobjects.push(mobject);
     }
 }
