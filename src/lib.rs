@@ -3,6 +3,7 @@
 mod math_utils;
 mod mobjects;
 mod video_backend;
+mod animation;
 
 use mobjects::Mobject;
 
@@ -186,22 +187,7 @@ fn test_rectangle_image() {
     scene.save_png(&mut ctx, "rectangle.png");
 }
 
-struct AnimationConfig {
-    current_frame: u32,
-    total_frames: u32,
-}
-struct Movement {
-    displacement: nalgebra::Vector3<GMFloat>,
-    animation_config: AnimationConfig,
-    mobject: Box<dyn Mobject>,
-}
 
-impl Iterator for Movement {
-    type Item = Vec<u8>;
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
 
 #[test]
 fn write_frame() {
