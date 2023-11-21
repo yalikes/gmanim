@@ -5,13 +5,13 @@ use rusttype::{point, Font, Scale};
 
 use crate::mobjects::Draw;
 use crate::{ContextType, GMFloat};
-use nalgebra::Vector3;
+use nalgebra::{Vector3, Point3};
 
 use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Transform};
 
 pub struct Text {
     pub text: String,
-    pub position: Vector3<GMFloat>,
+    pub position: Point3<GMFloat>,
     pub font_size: GMFloat,
     pub draw_config: DrawConfig,
 }

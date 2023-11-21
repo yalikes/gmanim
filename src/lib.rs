@@ -3,12 +3,12 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-mod animation;
-mod math_utils;
-mod mobjects;
-mod video_backend;
+pub mod animation;
+pub mod math_utils;
+pub mod mobjects;
+pub mod video_backend;
 
-type GMFloat = f32;
+pub type GMFloat = f32;
 #[derive(Clone, Copy, Debug)]
 struct Color {
     r: u8,
@@ -48,16 +48,16 @@ pub enum ContextType {
 }
 
 pub struct SceneConfig {
-    width: GMFloat,
-    height: GMFloat,
-    output_width: u32,
-    output_height: u32,
-    scale_factor: GMFloat,
+    pub width: GMFloat,
+    pub height: GMFloat,
+    pub output_width: u32,
+    pub output_height: u32,
+    pub scale_factor: GMFloat,
 }
 
 pub struct Context {
-    ctx_type: ContextType,
-    scene_config: SceneConfig,
+    pub ctx_type: ContextType,
+    pub scene_config: SceneConfig,
 }
 
 impl Default for SceneConfig {
@@ -103,15 +103,15 @@ impl Context {
 }
 
 #[derive(Default)]
-struct Scene {
-    mobjects: Vec<Rc<RefCell<Box<dyn mobjects::Mobject>>>>,
+pub struct Scene {
+    pub mobjects: Vec<Rc<RefCell<Box<dyn mobjects::Mobject>>>>,
 }
 
 impl Scene {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Scene { mobjects: vec![] }
     }
-    fn save_png(&self, ctx: &mut Context, file_path: &str) {
+    pub fn save_png(&self, ctx: &mut Context, file_path: &str) {
         ctx.clear_transparent();
 
         for m in self.mobjects.iter() {
@@ -126,10 +126,10 @@ impl Scene {
         }
     }
 
-    fn add(&mut self, mobject: Box<dyn mobjects::Mobject>) {
+    pub fn add(&mut self, mobject: Box<dyn mobjects::Mobject>) {
         self.mobjects.push(Rc::new(RefCell::new(mobject)));
     }
-    fn add_ref(&mut self, mobject_ref: Rc<RefCell<Box<dyn mobjects::Mobject>>>){
+    pub fn add_ref(&mut self, mobject_ref: Rc<RefCell<Box<dyn mobjects::Mobject>>>){
         self.mobjects.push(mobject_ref);
     }
 }
