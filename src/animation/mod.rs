@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use nalgebra::Vector3;
 
 use crate::{mobjects::Mobject, GMFloat, Scene};
@@ -12,13 +14,15 @@ struct AnimationConfig {
 struct Movement {
     displacement: Vector3<GMFloat>,
     scene: Scene,
-    m: Box<dyn Mobject>,
+    m: Rc<RefCell<Box<dyn Mobject>>>,
     animation_config: AnimationConfig,
 }
 
 impl Iterator for Movement {
     type Item = Vec<u8>;
     fn next(&mut self) -> Option<Self::Item> {
+        let current_frame = self.animation_config.current_frame;
+        let total_frame = self.animation_config.total_frame;
         None
     }
 }
