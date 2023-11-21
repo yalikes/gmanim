@@ -1,45 +1,115 @@
 use std::{cell::RefCell, rc::Rc};
 
-use nalgebra::Vector3;
+use nalgebra::{Point3, Vector3};
 
-use crate::{mobjects::Mobject, GMFloat, Scene};
+use crate::{
+    mobjects::{text::Text, Mobject, MobjectClone, SimpleLine},
+    Context, GMFloat, Scene,
+};
 
 trait Animation: Iterator<Item = Vec<u8>> {}
 
-struct AnimationConfig {
-    total_frame: u32,
-    current_frame: u32,
-    rate_function: fn(GMFloat) -> GMFloat,
+pub struct AnimationConfig {
+    pub total_frame: u32,
+    pub current_frame: u32,
+    pub rate_function: fn(GMFloat) -> GMFloat,
 }
-pub struct Movement {
-    displacement: Vector3<GMFloat>,
-    scene: Scene,
-    m: Rc<RefCell<Box<dyn Mobject>>>,
-    m_start_state: Box<dyn Mobject>,
-    animation_config: AnimationConfig,
+pub struct SimpleMovement {
+    pub displacement: Vector3<GMFloat>,
+    pub scene: Rc<RefCell<Scene>>,
+    pub ctx: Rc<RefCell<Context>>,
+    pub m: Rc<RefCell<Box<dyn Mobject>>>,
+    pub animation_config: AnimationConfig,
+    pub last_progress: GMFloat,
 }
 
-impl Iterator for Movement {
+pub struct MovementPrecise {
+    pub displacement: Vector3<GMFloat>,
+    pub scene: Rc<RefCell<Scene>>,
+    pub ctx: Rc<RefCell<Context>>,
+    pub m: Rc<RefCell<Box<dyn Mobject>>>,
+    pub start_mobject: Rc<RefCell<Box<dyn MobjectClone>>>,
+    pub animation_config: AnimationConfig,
+}
+
+impl Iterator for SimpleMovement {
     type Item = Vec<u8>;
     fn next(&mut self) -> Option<Self::Item> {
+        self.animation_config.current_frame += 1;
+
         let current_frame = self.animation_config.current_frame;
         let total_frame = self.animation_config.total_frame;
-        if current_frame>total_frame{
-            return None
+
+        if current_frame > total_frame {
+            return None;
         }
+
         let progress = (self.animation_config.rate_function)(
             current_frame as GMFloat / total_frame as GMFloat,
         );
-        self.animation_config.current_frame += 1;
 
-        None
+        let delta_progress = progress - self.last_progress;
+        self.last_progress = progress;
+
+        let translation = nalgebra::Matrix4::new_translation(&(self.displacement * delta_progress));
+        self.m
+            .borrow_mut()
+            .transform(nalgebra::Transform::from_matrix_unchecked(translation));
+        // Some()
+        for d in &self.scene.borrow().mobjects {
+            self.ctx.borrow_mut().clear_transparent();
+            d.borrow().draw(&mut *self.ctx.borrow_mut());
+        }
+        Some(self.ctx.borrow().image_bytes().to_vec())
     }
 }
 
-impl Animation for Movement {}
+impl Animation for SimpleMovement {}
 
-impl Movement {
-    pub fn new(){
+impl SimpleMovement {
+    pub fn new() {}
+}
 
+#[test]
+fn test_simple_move() {
+    let mut ctx = Context::default();
+    let mut scene = Scene::default();
+    let mut line: Box<dyn Mobject> = Box::new(SimpleLine {
+        p0: Point3::new(0.0, 0.0, 0.0),
+        p1: Point3::new(1.0, 1.0, 0.0),
+        draw_config: Default::default(),
+    });
+    let line_ref = Rc::new(RefCell::new(line));
+    scene.add_ref(line_ref.clone());
+    let scene = Rc::new(RefCell::new(scene));
+    let ctx = Rc::new(RefCell::new(ctx));
+    let simple_move = SimpleMovement {
+        displacement: Vector3::new(2.0, 0.0, 0.0),
+        scene: scene.clone(),
+        ctx: ctx.clone(),
+        m: line_ref.clone(),
+        animation_config: AnimationConfig {
+            total_frame: 240,
+            current_frame: 0,
+            rate_function: |x| x,
+        },
+        last_progress: 0.0,
+    };
+    use crate::video_backend::{
+        ColorOrder, FFMPEGBackend, FrameMessage, VideoBackend, VideoBackendType, VideoConfig,
+    };
+
+    let video_config = VideoConfig {
+        filename: "output.mp4".to_owned(),
+        framerate: 60,
+        output_height: 1080,
+        output_width: 1920,
+        color_order: ColorOrder::Rgba,
+    };
+    let mut video_backend_var = VideoBackend {
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
+    };
+    for frame in simple_move {
+        video_backend_var.write_frame(&frame);
     }
 }

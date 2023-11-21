@@ -1,4 +1,7 @@
 pub trait Mobject: Transform + Draw {}
+pub trait MobjectClone: Mobject{
+    fn mobject_clone(&self) -> Box<dyn MobjectClone>;
+}
 
 use crate::{Color, Context, ContextType, GMFloat, SceneConfig};
 

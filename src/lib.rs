@@ -130,7 +130,7 @@ impl Scene {
         self.mobjects.push(Rc::new(RefCell::new(mobject)));
     }
     pub fn add_ref(&mut self, mobject_ref: Rc<RefCell<Box<dyn mobjects::Mobject>>>){
-        self.mobjects.push(mobject_ref);
+        self.mobjects.push(mobject_ref.clone());
     }
 }
 

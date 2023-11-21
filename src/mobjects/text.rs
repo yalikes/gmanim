@@ -110,8 +110,8 @@ fn test_draw_text() {
     let mut ctx = crate::Context::default();
     let mut scene = crate::Scene::new();
     let text = Text {
-        text: "我去".to_owned(),
-        position: Vector3::new(0.0, 0.0, 0.0),
+        text: "测试文本".to_owned(),
+        position: Point3::new(0.0, 0.0, 0.0),
         font_size: 600.0,
         draw_config: Default::default(),
     };
