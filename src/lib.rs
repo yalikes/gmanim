@@ -7,7 +7,7 @@ pub mod animation;
 pub mod math_utils;
 pub mod mobjects;
 pub mod video_backend;
-
+pub mod log_utils;
 pub type GMFloat = f32;
 #[derive(Clone, Copy, Debug)]
 struct Color {
@@ -224,6 +224,7 @@ fn write_frame() {
     let mut video_backend_var = VideoBackend {
         backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
     };
+
     for _ in 0..480 {
         let now = std::time::Instant::now();
         let translation =

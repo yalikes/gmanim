@@ -1,10 +1,11 @@
 use std::fs;
 use std::io::Read;
 
+use log::info;
 use rusttype::{point, Font, Scale};
 
 use crate::mobjects::Draw;
-use crate::{ContextType, GMFloat};
+use crate::{ContextType, GMFloat, log_utils};
 use nalgebra::{Vector3, Point3};
 
 use super::{coordinate_change_x, coordinate_change_y, DrawConfig, Mobject, Transform};
