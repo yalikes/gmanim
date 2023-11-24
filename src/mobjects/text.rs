@@ -20,6 +20,29 @@ pub struct Text {
     pub draw_config: DrawConfig,
 }
 
+impl Transform for PathElement {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        match self {
+            PathElement::MoveTo(p) => {
+                *p = transform * p.clone();
+            }
+            PathElement::LineTo(p) => {
+                *p = transform * p.clone();
+            }
+            PathElement::QuadTo(p1, p2) => {
+                *p1 = transform * p1.clone();
+                *p2 = transform * p2.clone();
+            }
+            PathElement::CubicTo(p1, p2, p3) => {
+                *p1 = transform * p1.clone();
+                *p2 = transform * p2.clone();
+                *p3 = transform * p3.clone();
+            }
+            PathElement::Close => {}
+        }
+    }
+}
+
 pub enum FontConfig {
     Default,
     FontName(String),
@@ -27,16 +50,33 @@ pub enum FontConfig {
 }
 
 impl Transform for Text {
-    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {}
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        for g in &mut self.glyph_paths {
+            g.transform(transform);
+        }
+    }
 }
 
 struct GlyphPath {
+    glyph_position: Point2<GMFloat>,
     path_elements: Vec<PathElement>,
 }
 
+impl Transform for GlyphPath {
+    fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
+        for p in &mut self.path_elements {
+            p.transform(transform);
+        }
+    }
+}
+
 impl GlyphPath {
-    fn new() -> Self {
+    fn new(position: rusttype::Point<f32>) -> Self {
         Self {
+            glyph_position: Point2::new(
+                position.x * SCALE_TEXT_FACTOR,
+                -position.y * SCALE_TEXT_FACTOR,
+            ),
             path_elements: vec![],
         }
     }
@@ -47,23 +87,51 @@ pub const SCALE_TEXT_FACTOR: f32 = 0.1;
 impl rusttype::OutlineBuilder for GlyphPath {
     fn move_to(&mut self, x: f32, y: f32) {
         self.path_elements
-            .push(PathElement::MoveTo(nalgebra::Point3::new(x * SCALE_TEXT_FACTOR, -y * SCALE_TEXT_FACTOR, 0.0)))
+            .push(PathElement::MoveTo(nalgebra::Point3::new(
+                x * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            )))
     }
     fn line_to(&mut self, x: f32, y: f32) {
         self.path_elements
-            .push(PathElement::LineTo(nalgebra::Point3::new(x * SCALE_TEXT_FACTOR, -y * SCALE_TEXT_FACTOR, 0.0)))
+            .push(PathElement::LineTo(nalgebra::Point3::new(
+                x * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            )))
     }
     fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
         self.path_elements.push(PathElement::QuadTo(
-            nalgebra::Point3::new(x1 * SCALE_TEXT_FACTOR, -y1 * SCALE_TEXT_FACTOR, 0.0),
-            nalgebra::Point3::new(x * SCALE_TEXT_FACTOR, -y * SCALE_TEXT_FACTOR, 0.0),
+            nalgebra::Point3::new(
+                x1 * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y1 * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            ),
+            nalgebra::Point3::new(
+                x * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            ),
         ))
     }
     fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
         self.path_elements.push(PathElement::CubicTo(
-            nalgebra::Point3::new(x1 * SCALE_TEXT_FACTOR, -y1 * SCALE_TEXT_FACTOR, 0.0),
-            nalgebra::Point3::new(x2 * SCALE_TEXT_FACTOR, -y2 * SCALE_TEXT_FACTOR, 0.0),
-            nalgebra::Point3::new(x * SCALE_TEXT_FACTOR, -y * SCALE_TEXT_FACTOR, 0.0),
+            nalgebra::Point3::new(
+                x1 * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y1 * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            ),
+            nalgebra::Point3::new(
+                x2 * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y2 * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            ),
+            nalgebra::Point3::new(
+                x * SCALE_TEXT_FACTOR + self.glyph_position.x,
+                -y * SCALE_TEXT_FACTOR + self.glyph_position.y,
+                0.0,
+            ),
         ))
     }
     fn close(&mut self) {
@@ -166,24 +234,24 @@ impl Draw for Text {
 
                                 pb.cubic_to(x1, y1, x2, y2, x3, y3);
                             }
-                            PathElement::Close =>{ 
+                            PathElement::Close => {
                                 pb.close();
-                            },
+                            }
                         }
                     }
                     let path = pb.finish().unwrap();
-                        let mut stroke = tiny_skia::Stroke::default();
-                        stroke.width = self.draw_config.stoke_width * scale_factor;
-                        stroke.line_cap = tiny_skia::LineCap::Round;
-                        let mut paint = tiny_skia::Paint::default();
-                        paint.set_color(self.draw_config.color.into());
-                        pixmap.fill_path(
-                            &path,
-                            &paint,
-                            Default::default(),
-                            tiny_skia::Transform::identity(),
-                            None,
-                        );
+                    let mut stroke = tiny_skia::Stroke::default();
+                    stroke.width = self.draw_config.stoke_width * scale_factor;
+                    stroke.line_cap = tiny_skia::LineCap::Round;
+                    let mut paint = tiny_skia::Paint::default();
+                    paint.set_color(self.draw_config.color.into());
+                    pixmap.fill_path(
+                        &path,
+                        &paint,
+                        Default::default(),
+                        tiny_skia::Transform::identity(),
+                        None,
+                    );
                 }
             }
             _ => {}
@@ -237,7 +305,7 @@ impl Text {
             ((max_x - min_x) as usize, min_x)
         }; // great, rusttype help me to calculate advance width and Kerning Pair
         for glyph in glyphs {
-            let mut glyph_path = GlyphPath::new();
+            let mut glyph_path = GlyphPath::new(glyph.position());
             glyph.build_outline(&mut glyph_path);
             glyph_paths.push(glyph_path);
         }
@@ -258,12 +326,17 @@ fn test_draw_text() {
     setup_logger().unwrap();
     let mut ctx = crate::Context::default();
     let mut scene = crate::Scene::new();
-    let text = Text::new(
-        "你".to_owned(),
-        Point3::new(0.0, 0.0, 0.0),
+    let mut text = Text::new(
+        "你好呀".to_owned(),
+        Point3::new(0.0, 1.0, 0.0),
         32.0,
         DrawConfig::default(),
     );
+    let rotation = nalgebra::Matrix4::new_rotation_wrt_point(
+        nalgebra::Vector3::new(0.0, 0.0, 1.0),
+        nalgebra::Point3::new(0.0, 0.0, 0.0),
+    );
+    text.transform(nalgebra::Transform::from_matrix_unchecked(rotation));
     text.draw(&mut ctx);
     match &mut ctx.ctx_type {
         ContextType::TinySKIA(pixmap) => {

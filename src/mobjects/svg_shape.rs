@@ -90,24 +90,7 @@ impl SVGPath {
 impl super::Transform for SVGPath {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {
         for e in &mut self.elements {
-            match e {
-                PathElement::MoveTo(p) => {
-                    *p = transform * p.clone();
-                }
-                PathElement::LineTo(p) => {
-                    *p = transform * p.clone();
-                }
-                PathElement::QuadTo(p1, p2) => {
-                    *p1 = transform * p1.clone();
-                    *p2 = transform * p2.clone();
-                }
-                PathElement::CubicTo(p1, p2, p3) => {
-                    *p1 = transform * p1.clone();
-                    *p2 = transform * p2.clone();
-                    *p3 = transform * p3.clone();
-                }
-                PathElement::Close => {}
-            }
+            e.transform(transform);
         }
     }
 }
