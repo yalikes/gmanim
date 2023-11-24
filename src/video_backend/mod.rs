@@ -139,6 +139,8 @@ impl FFMPEGBackend {
                 "-an",
                 "-vcodec",
                 "libx264",
+                "-preset",
+                "ultrafast",
                 "-pix_fmt",
                 "yuv420p",
                 &format!("{}", video_config.filename),
