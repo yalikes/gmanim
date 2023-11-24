@@ -10,21 +10,10 @@ use crate::{
 
 use super::{
     coordinate_change_x, coordinate_change_y, group::MobjectGroup, Draw, DrawConfig, Mobject,
-    Transform,
+    Transform, path::PathElement,
 };
 
-#[derive(Debug)]
-pub enum PathElement {
-    MoveTo(nalgebra::Point2<GMFloat>),
-    LineTo(nalgebra::Point2<GMFloat>),
-    QuadTo(nalgebra::Point2<GMFloat>, nalgebra::Point2<GMFloat>),
-    CubicTo(
-        nalgebra::Point2<GMFloat>,
-        nalgebra::Point2<GMFloat>,
-        nalgebra::Point2<GMFloat>,
-    ),
-    Close,
-}
+
 
 #[derive(Debug)]
 struct SVGPath {
@@ -52,7 +41,7 @@ impl SVGPath {
         } else {
             return;
         }
-        let start_displacement = nalgebra::Vector2::new(start_pos.x, start_pos.y);
+        let start_displacement = nalgebra::Vector3::new(start_pos.x, start_pos.y, 0.0);
         for e in &mut self.elements {
             match e {
                 PathElement::MoveTo(p) => {
@@ -103,19 +92,19 @@ impl super::Transform for SVGPath {
         for e in &mut self.elements {
             match e {
                 PathElement::MoveTo(p) => {
-                    *p = point3d_to_point2d(transform * point2d_to_point3d(p.clone()));
+                    *p = transform * p.clone();
                 }
                 PathElement::LineTo(p) => {
-                    *p = point3d_to_point2d(transform * point2d_to_point3d(p.clone()));
+                    *p = transform * p.clone();
                 }
                 PathElement::QuadTo(p1, p2) => {
-                    *p1 = point3d_to_point2d(transform * point2d_to_point3d(p1.clone()));
-                    *p2 = point3d_to_point2d(transform * point2d_to_point3d(p2.clone()));
+                    *p1 = transform * p1.clone();
+                    *p2 = transform * p2.clone();
                 }
                 PathElement::CubicTo(p1, p2, p3) => {
-                    *p1 = point3d_to_point2d(transform * point2d_to_point3d(p1.clone()));
-                    *p2 = point3d_to_point2d(transform * point2d_to_point3d(p2.clone()));
-                    *p3 = point3d_to_point2d(transform * point2d_to_point3d(p3.clone()));
+                    *p1 = transform * p1.clone();
+                    *p2 = transform * p2.clone();
+                    *p3 = transform * p3.clone();
                 }
                 PathElement::Close => {}
             }
@@ -258,17 +247,19 @@ pub fn process_path_element(e: PathSegment, transform: tiny_skia::Transform) -> 
         PathSegment::MoveTo(p) => {
             let mut new_p = p.clone();
             transform.map_point(&mut new_p);
-            PathElement::MoveTo(nalgebra::Point2::new(
+            PathElement::MoveTo(nalgebra::Point3::new(
                 new_p.x as GMFloat,
                 new_p.y as GMFloat,
+                0.0,
             ))
         }
         PathSegment::LineTo(p) => {
             let mut new_p = p.clone();
             transform.map_point(&mut new_p);
-            PathElement::LineTo(nalgebra::Point2::new(
+            PathElement::LineTo(nalgebra::Point3::new(
                 new_p.x as GMFloat,
                 new_p.y as GMFloat,
+                0.0,
             ))
         }
         PathSegment::QuadTo(p1, p2) => {
@@ -277,8 +268,8 @@ pub fn process_path_element(e: PathSegment, transform: tiny_skia::Transform) -> 
             transform.map_point(&mut new_p1);
             transform.map_point(&mut new_p2);
             PathElement::QuadTo(
-                nalgebra::Point2::new(new_p1.x as GMFloat, new_p1.y as GMFloat),
-                nalgebra::Point2::new(new_p2.x as GMFloat, new_p2.y as GMFloat),
+                nalgebra::Point3::new(new_p1.x as GMFloat, new_p1.y as GMFloat, 0.0),
+                nalgebra::Point3::new(new_p2.x as GMFloat, new_p2.y as GMFloat, 0.0),
             )
         }
         PathSegment::CubicTo(p1, p2, p3) => {
@@ -289,9 +280,9 @@ pub fn process_path_element(e: PathSegment, transform: tiny_skia::Transform) -> 
             transform.map_point(&mut new_p2);
             transform.map_point(&mut new_p3);
             PathElement::CubicTo(
-                nalgebra::Point2::new(new_p1.x as GMFloat, new_p1.y as GMFloat),
-                nalgebra::Point2::new(new_p2.x as GMFloat, new_p2.y as GMFloat),
-                nalgebra::Point2::new(new_p3.x as GMFloat, new_p3.y as GMFloat),
+                nalgebra::Point3::new(new_p1.x as GMFloat, new_p1.y as GMFloat, 0.0),
+                nalgebra::Point3::new(new_p2.x as GMFloat, new_p2.y as GMFloat, 0.0),
+                nalgebra::Point3::new(new_p3.x as GMFloat, new_p3.y as GMFloat, 0.0),
             )
         }
         PathSegment::Close => PathElement::Close,
