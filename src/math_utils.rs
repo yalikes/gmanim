@@ -133,6 +133,11 @@ fn test_bezier_curve() {
     }
 }
 
+pub fn k_for_bezier_arc(theta: GMFloat) -> GMFloat {
+    // assume theta was less than pi/2
+    (4.0 / 3.0 * (1.0 - (theta as GMFloat).cos()) / (theta as GMFloat).sin()) as GMFloat
+}
+
 #[inline]
 pub fn point2d_to_point3d(p: nalgebra::Point2<GMFloat>) -> nalgebra::Point3<GMFloat> {
     nalgebra::Point3::new(p.x, p.y, 0.0)
