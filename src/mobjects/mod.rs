@@ -3,6 +3,8 @@ pub trait MobjectClone: Mobject {
     fn mobject_clone(&self) -> Box<dyn MobjectClone>;
 }
 
+use std::f32::consts::PI;
+
 use crate::{
     math_utils::k_for_bezier_arc, Color, Context, ContextType, GMFloat, Scene, SceneConfig,
 };
@@ -220,7 +222,36 @@ pub struct Arc {
     start_angle: GMFloat,
     end_angle: GMFloat,
     radius: GMFloat,
+    _segs: usize,
+    _seg_list: Vec<GMFloat>,
     draw_config: DrawConfig,
+}
+
+impl Arc {
+    pub fn new(
+        center_point: Point3<GMFloat>,
+        start_angle: GMFloat,
+        end_angle: GMFloat,
+        radius: GMFloat,
+    ) -> Self {
+        let _segs = ((end_angle - start_angle) / (PI as GMFloat / 2 as GMFloat)).ceil() as usize;
+        let delta_angle = (end_angle - start_angle) / _segs as GMFloat;
+        let mut _seg_list = vec![];
+        _seg_list.push(start_angle);
+        for i in 1..(_segs - 1) {
+            _seg_list.push(start_angle + i as GMFloat * delta_angle);
+        }
+        _seg_list.push(end_angle);
+        Self {
+            center_point,
+            start_angle,
+            end_angle,
+            radius,
+            _segs,
+            _seg_list,
+            draw_config: DrawConfig::default(),
+        }
+    }
 }
 
 impl Draw for Arc {
@@ -230,50 +261,51 @@ impl Draw for Arc {
         let scene_height = ctx.scene_config.height;
         match &mut ctx.ctx_type {
             ContextType::TinySKIA(pixmap) => {
-                let mut pb = tiny_skia::PathBuilder::new();
-                // approximate arc by cubic bezier curve here
+                for i in 0..(self._segs - 1) {
+                    let mut pb = tiny_skia::PathBuilder::new();
+                    // approximate arc by cubic bezier curve here
+                    let start_angle = self._seg_list[i];
+                    let end_angle = self._seg_list[i + 1];
+                    let k = k_for_bezier_arc((end_angle - start_angle) / 2.0);
+                    let point_0 = self.center_point.xy()
+                        + Vector2::new(end_angle.cos(), end_angle.sin()) * self.radius;
 
-                let k = k_for_bezier_arc((self.end_angle - self.start_angle) / 2.0);
-                let point_0 = self.center_point.xy()
-                    + Vector2::new(self.end_angle.cos(), self.end_angle.sin()) * self.radius;
+                    let point_3 = self.center_point.xy()
+                        + Vector2::new(start_angle.cos(), start_angle.sin()) * self.radius;
 
-                let point_3 = self.center_point.xy()
-                    + Vector2::new(self.start_angle.cos(), self.start_angle.sin()) * self.radius;
+                    let point_1 =
+                        point_0 + Vector2::new(end_angle.sin(), -end_angle.cos()) * k * self.radius;
+                    let point_2 = point_3
+                        + Vector2::new(-start_angle.sin(), start_angle.cos()) * k * self.radius;
+                    pb.move_to(
+                        coordinate_change_x(point_0.x, scene_width) * scale_factor,
+                        coordinate_change_y(point_0.y, scene_height) * scale_factor,
+                    );
+                    pb.cubic_to(
+                        coordinate_change_x(point_1.x, scene_width) * scale_factor,
+                        coordinate_change_y(point_1.y, scene_height) * scale_factor,
+                        coordinate_change_x(point_2.x, scene_width) * scale_factor,
+                        coordinate_change_y(point_2.y, scene_height) * scale_factor,
+                        coordinate_change_x(point_3.x, scene_width) * scale_factor,
+                        coordinate_change_y(point_3.y, scene_height) * scale_factor,
+                    );
 
-                let point_1 = point_0
-                    + Vector2::new(self.end_angle.sin(), -self.end_angle.cos()) * k * self.radius;
-                let point_2 = point_3
-                    + Vector2::new(-self.start_angle.sin(), self.start_angle.cos())
-                        * k
-                        * self.radius;
-                pb.move_to(
-                    coordinate_change_x(point_0.x, scene_width) * scale_factor,
-                    coordinate_change_y(point_0.y, scene_height) * scale_factor,
-                );
-                pb.cubic_to(
-                    coordinate_change_x(point_1.x, scene_width) * scale_factor,
-                    coordinate_change_y(point_1.y, scene_height) * scale_factor,
-                    coordinate_change_x(point_2.x, scene_width) * scale_factor,
-                    coordinate_change_y(point_2.y, scene_height) * scale_factor,
-                    coordinate_change_x(point_3.x, scene_width) * scale_factor,
-                    coordinate_change_y(point_3.y, scene_height) * scale_factor,
-                );
+                    let path = pb.finish().unwrap();
+                    let mut stroke = Stroke::default();
+                    stroke.width = self.draw_config.stoke_width * scale_factor;
+                    stroke.line_cap = LineCap::Round;
+                    stroke.line_join = LineJoin::Round;
+                    let mut paint = Paint::default();
+                    paint.set_color(self.draw_config.color.into());
 
-                let path = pb.finish().unwrap();
-                let mut stroke = Stroke::default();
-                stroke.width = self.draw_config.stoke_width * scale_factor;
-                stroke.line_cap = LineCap::Round;
-                stroke.line_join = LineJoin::Round;
-                let mut paint = Paint::default();
-                paint.set_color(self.draw_config.color.into());
-
-                pixmap.stroke_path(
-                    &path,
-                    &paint,
-                    &stroke,
-                    tiny_skia::Transform::identity(),
-                    None,
-                );
+                    pixmap.stroke_path(
+                        &path,
+                        &paint,
+                        &stroke,
+                        tiny_skia::Transform::identity(),
+                        None,
+                    );
+                }
             }
             _ => {}
         }
@@ -284,9 +316,7 @@ impl Transform for Arc {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>) {}
 }
 
-impl Mobject for Arc {
-    
-}
+impl Mobject for Arc {}
 
 impl Draw for PolyLine {
     fn draw(self: &Self, ctx: &mut Context) {
@@ -355,13 +385,7 @@ pub fn coordinate_change_y(position_y: GMFloat, scene_height: GMFloat) -> GMFloa
 fn test_draw_arc() {
     let mut ctx = Context::default();
     let mut scene = Scene::default();
-    let arc = Arc {
-        center_point: Point3::new(0.0, 1.0, 0.0),
-        start_angle: 0.0,
-        end_angle: 3.0,
-        radius: 1.0,
-        draw_config: DrawConfig::default(),
-    };
+    let arc = Arc::new(Point3::new(0.0, 1.0, 0.0), 0.0, PI as GMFloat * 2.0, 3.0);
     scene.add(Box::new(arc));
     scene.save_png(&mut ctx, "arc.png");
 }
