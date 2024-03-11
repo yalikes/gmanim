@@ -45,6 +45,54 @@ pub struct FFMPEGBackend {
     stdin: std::process::ChildStdin,
 }
 
+#[allow(non_camel_case_types)]
+pub enum FFMPEGEncoder {
+    libx264,
+    libx265,
+    hevc_nvenc,
+}
+
+impl FFMPEGEncoder {
+    fn get_encoder_name(&self) -> &'static str {
+        match self {
+            Self::libx264 => "libx264",
+            Self::libx265 => "libx265",
+            Self::hevc_nvenc => "hevc_nvenc",
+        }
+    }
+    fn get_highest_preset_name(&self) -> &'static str {
+        match self {
+            Self::libx264 => "veryslow",
+            Self::libx265 => "veryslow",
+            Self::hevc_nvenc => "p7",
+        }
+    }
+    fn get_fastest_preset_name(&self) -> &'static str {
+        match self {
+            Self::libx264 => "ultrafast",
+            Self::libx265 => "ultrafast",
+            Self::hevc_nvenc => "p1",
+        }
+    }
+    fn get_highest_pixel_format(&self) -> &'static str {
+        match self {
+            Self::libx264 => "yuv444p",
+            Self::libx265 => "yuv444p",
+            Self::hevc_nvenc => "yuv444p",
+        }
+    }
+    fn get_fastest_pixel_format(&self) -> &'static str {
+        match self {
+            Self::libx264 => "yuv420p",
+            Self::libx265 => "yuv420p",
+            Self::hevc_nvenc => "yuv420p",
+        }
+    }
+}
+pub struct FFMPEGConfig {
+    pub ffmpeg_encoder: FFMPEGEncoder,
+}
+
 pub struct BgraRAWBackend {
     file: std::fs::File,
 }
@@ -119,7 +167,22 @@ impl VideoBackend {
 }
 
 impl FFMPEGBackend {
-    pub fn new(video_config: &VideoConfig) -> Self {
+    pub fn new(
+        video_config: &VideoConfig,
+        encoder_config: FFMPEGEncoder,
+        high_profile: bool,
+    ) -> Self {
+        let encoder_name = encoder_config.get_encoder_name();
+        let preset = if high_profile {
+            encoder_config.get_highest_preset_name()
+        } else {
+            encoder_config.get_fastest_preset_name()
+        };
+        let out_pixel_format = if high_profile {
+            encoder_config.get_highest_pixel_format()
+        } else {
+            encoder_config.get_fastest_pixel_format()
+        };
         let mut c = std::process::Command::new("ffmpeg")
             .args([
                 "-y",
@@ -138,16 +201,16 @@ impl FFMPEGBackend {
                 "-",
                 "-an",
                 "-vcodec",
-                "libx264",
+                &format!("{}", encoder_name),
                 "-preset",
-                "ultrafast",
+                &format!("{}", preset),
                 "-pix_fmt",
-                "yuv420p",
+                &format!("{}", out_pixel_format),
                 &format!("{}", video_config.filename),
             ])
             .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
+            // .stdout(std::process::Stdio::null())
+            // .stderr(std::process::Stdio::null())
             .spawn()
             .expect("failed to spawn child process");
         let mut stdin = c.stdin.take().expect("failed to open stdin");

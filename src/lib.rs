@@ -222,7 +222,7 @@ fn write_frame() {
         color_order: ColorOrder::Rgba,
     };
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, video_backend::FFMPEGEncoder::hevc_nvenc, false)),
     };
 
     for _ in 0..480 {
@@ -276,7 +276,7 @@ fn thread_frame_pass() {
     };
 
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, video_backend::FFMPEGEncoder::hevc_nvenc, false)),
     };
 
     let (tx, rx) = channel::<video_backend::FrameMessage>();
