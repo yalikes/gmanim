@@ -209,8 +209,8 @@ impl FFMPEGBackend {
                 &format!("{}", video_config.filename),
             ])
             .stdin(std::process::Stdio::piped())
-            // .stdout(std::process::Stdio::null())
-            // .stderr(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .expect("failed to spawn child process");
         let mut stdin = c.stdin.take().expect("failed to open stdin");

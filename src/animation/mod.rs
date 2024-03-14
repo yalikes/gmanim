@@ -232,7 +232,7 @@ fn test_simple_rotate() {
         color_order: ColorOrder::Rgba,
     };
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, FFMPEGEncoder::hevc_nvenc, false)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, FFMPEGEncoder::libx264, false)),
     };
     for frame in simple_move {
         video_backend_var.write_frame(&frame);
