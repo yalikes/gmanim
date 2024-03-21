@@ -3,7 +3,9 @@ use std::{cell::RefCell, rc::Rc};
 use nalgebra::{Point3, Vector3};
 
 use crate::{
-    mobjects::{text::Text, Mobject, MobjectClone, SimpleLine}, video_backend::FFMPEGEncoder, Context, GMFloat, Scene
+    mobjects::{text::Text, Mobject, MobjectClone, SimpleLine},
+    video_backend::{FFMPEGEncoder, VideoBackendController},
+    Context, GMFloat, Scene,
 };
 
 trait Animation: Iterator<Item = Vec<u8>> {}
@@ -128,7 +130,7 @@ fn test_simple_move() {
         ctx: ctx.clone(),
         m: line_ref.clone(),
         animation_config: AnimationConfig {
-            total_frame: 240,
+            total_frame: 60 * 30,
             current_frame: 0,
             rate_function: |x| x,
         },
@@ -146,11 +148,18 @@ fn test_simple_move() {
         color_order: ColorOrder::Rgba,
     };
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config,FFMPEGEncoder::hevc_nvenc, false)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(
+            &video_config,
+            FFMPEGEncoder::hevc_nvenc,
+            false,
+        )),
     };
+    let mut video_backend_controller = VideoBackendController::new(video_backend_var);
     for frame in simple_move {
-        video_backend_var.write_frame(&frame);
+        video_backend_controller.write_frame(frame);
+        // video_backend_var.write_frame(&frame);
     }
+    video_backend_controller.end();
 }
 
 impl Animation for SimpleRotate {}
@@ -232,7 +241,11 @@ fn test_simple_rotate() {
         color_order: ColorOrder::Rgba,
     };
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, FFMPEGEncoder::hevc_nvenc, false)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(
+            &video_config,
+            FFMPEGEncoder::hevc_nvenc,
+            false,
+        )),
     };
     for frame in simple_move {
         video_backend_var.write_frame(&frame);
