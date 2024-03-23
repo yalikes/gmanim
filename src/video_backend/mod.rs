@@ -1,8 +1,10 @@
 use std::collections::VecDeque;
 use std::fmt::Display;
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::sync::mpsc::{self, channel, Receiver, Sender};
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread::{self, JoinHandle};
+
+const BLOCK_SIZE: usize = 240;
 pub enum VideoBackendType {
     FFMPEG(FFMPEGBackend),
     BgraRAW(BgraRAWBackend),
@@ -250,6 +252,75 @@ impl FFMPEGBackend {
             child: c,
             stdin: stdin,
         }
+    }
+}
+
+pub struct VideoBackendController {
+    // video_backend: Arc<Mutex<VideoBackend>>,
+    video_backend: Arc<Mutex<VideoBackend>>,
+    background_thread_handler: JoinHandle<()>,
+    block_queue: Arc<Mutex<VecDeque<Vec<Vec<u8>>>>>,
+    sender: Sender<FrameMessage>,
+    block: Option<Vec<Vec<u8>>>,
+}
+
+impl VideoBackendController {
+    pub fn new(video_backend: VideoBackend) -> Self {
+        let video_backend_ref = Arc::new(Mutex::new(video_backend));
+
+        let block_queue = Arc::new(Mutex::new(VecDeque::<Vec<Vec<u8>>>::new()));
+        let block_queue_ref = block_queue.clone();
+
+        let video_backend_ref_clone = video_backend_ref.clone();
+        let (sender, receiver) = channel::<FrameMessage>();
+
+        let block = Some(Vec::new());
+
+        let handler = thread::spawn(move || {
+            let video_backend_ref = video_backend_ref_clone.clone();
+            let block_queue = block_queue_ref.clone();
+            loop {
+                let msg = receiver.recv();
+                if msg.is_err() {
+                    break;
+                }
+                let frame_msg = msg.unwrap();
+                if matches!(frame_msg, FrameMessage::End) {
+                    break;
+                }
+                let frame_list = match block_queue.lock().unwrap().pop_front() {
+                    None => {
+                        break;
+                    }
+                    Some(f) => f,
+                };
+                let mut video_baackend = video_backend_ref.lock().unwrap();
+                for f in frame_list {
+                    video_baackend.write_frame(&f);
+                }
+            }
+        });
+        Self {
+            video_backend: video_backend_ref,
+            background_thread_handler: handler,
+            block_queue,
+            sender,
+            block,
+        }
+    }
+    pub fn write_frame(&mut self, frame: Vec<u8>) {
+        self.block.as_mut().unwrap().push(frame.to_owned());
+        if self.block.as_ref().unwrap().len() == BLOCK_SIZE {
+            self.block_queue
+                .lock()
+                .unwrap()
+                .push_back(self.block.replace(Vec::new()).unwrap());
+            self.sender.send(FrameMessage::Frame);
+        }
+    }
+    pub fn end(self) {
+        self.sender.send(FrameMessage::End);
+        self.background_thread_handler.join();
     }
 }
 

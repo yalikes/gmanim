@@ -4,7 +4,7 @@ use nalgebra::{Point3, Vector3};
 
 use crate::{
     mobjects::{text::Text, Mobject, MobjectClone, SimpleLine},
-    video_backend::FFMPEGEncoder,
+    video_backend::{FFMPEGEncoder, VideoBackendController},
     Context, GMFloat, Scene,
 };
 
@@ -130,7 +130,7 @@ fn test_simple_move() {
         ctx: ctx.clone(),
         m: line_ref.clone(),
         animation_config: AnimationConfig {
-            total_frame: 240,
+            total_frame: 60 * 30,
             current_frame: 0,
             rate_function: |x| x,
         },
@@ -154,9 +154,12 @@ fn test_simple_move() {
             false,
         )),
     };
+    let mut video_backend_controller = VideoBackendController::new(video_backend_var);
     for frame in simple_move {
-        video_backend_var.write_frame(&frame);
+        video_backend_controller.write_frame(frame);
+        // video_backend_var.write_frame(&frame);
     }
+    video_backend_controller.end();
 }
 
 impl Animation for SimpleRotate {}
