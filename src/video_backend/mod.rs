@@ -50,6 +50,7 @@ pub enum FFMPEGEncoder {
     libx264,
     libx265,
     hevc_nvenc,
+    hevc_vaapi,
 }
 
 impl FFMPEGEncoder {
@@ -58,34 +59,7 @@ impl FFMPEGEncoder {
             Self::libx264 => "libx264",
             Self::libx265 => "libx265",
             Self::hevc_nvenc => "hevc_nvenc",
-        }
-    }
-    fn get_highest_preset_name(&self) -> &'static str {
-        match self {
-            Self::libx264 => "veryslow",
-            Self::libx265 => "veryslow",
-            Self::hevc_nvenc => "p7",
-        }
-    }
-    fn get_fastest_preset_name(&self) -> &'static str {
-        match self {
-            Self::libx264 => "ultrafast",
-            Self::libx265 => "ultrafast",
-            Self::hevc_nvenc => "p1",
-        }
-    }
-    fn get_highest_pixel_format(&self) -> &'static str {
-        match self {
-            Self::libx264 => "yuv444p",
-            Self::libx265 => "yuv444p",
-            Self::hevc_nvenc => "yuv444p",
-        }
-    }
-    fn get_fastest_pixel_format(&self) -> &'static str {
-        match self {
-            Self::libx264 => "yuv420p",
-            Self::libx265 => "yuv420p",
-            Self::hevc_nvenc => "yuv420p",
+            Self::hevc_vaapi => "hevc_vaapi",
         }
     }
 }
@@ -165,6 +139,71 @@ impl VideoBackend {
         }
     }
 }
+struct FFMPEGOutputOptionBuilder {
+    high_quality: bool,
+    encoder: FFMPEGEncoder,
+}
+
+impl FFMPEGOutputOptionBuilder {
+    fn build_option(&self, args: &mut Vec<String>) {
+        args.push("-an".to_string());
+        args.extend([
+            "-vcodec".to_string(),
+            self.encoder.get_encoder_name().to_string(),
+        ]);
+
+        self.specify_hwaccel_device_option(args);
+        self.specify_quality_option(args);
+    }
+    fn specify_hwaccel_device_option(&self, args: &mut Vec<String>) {
+        match self.encoder {
+            FFMPEGEncoder::hevc_vaapi => {
+                args.extend([
+                    "-vaapi_device".to_string(),
+                    "/dev/dri/renderD128".to_string(),
+                    "-vf".to_string(),
+                    "format=nv12,hwupload".to_string(),
+                ]);
+            }
+            _ => {}
+        }
+    }
+
+    fn specify_quality_option(&self, args: &mut Vec<String>) {
+        let mut quality_options = match self.encoder {
+            FFMPEGEncoder::hevc_vaapi => {
+                if self.high_quality {
+                    vec!["-compression_level", "29", "-qp", "1"]
+                } else {
+                    vec!["-compression_level", "0", "-qp", "52"]
+                }
+            }
+            FFMPEGEncoder::hevc_nvenc => {
+                if self.high_quality {
+                    vec!["-preset", "p7"]
+                } else {
+                    vec!["-preset", "p1"]
+                }
+            }
+            _ => {
+                if self.high_quality {
+                    vec!["-preset", "veryslow"]
+                } else {
+                    vec!["-preset", "ultrafast"]
+                }
+            }
+        };
+        //vaapi only support "vaapi" pix_fmt
+        if !matches!(self.encoder, FFMPEGEncoder::hevc_vaapi) {
+            if self.high_quality {
+                quality_options.extend(["-pix_fmt", "yuv444p"]);
+            } else {
+                quality_options.extend(["-pix_fmt", "yuv420p"]);
+            }
+        }
+        args.extend(quality_options.iter().map(|x| x.to_string()))
+    }
+}
 
 impl FFMPEGBackend {
     pub fn new(
@@ -173,41 +212,34 @@ impl FFMPEGBackend {
         high_profile: bool,
     ) -> Self {
         let encoder_name = encoder_config.get_encoder_name();
-        let preset = if high_profile {
-            encoder_config.get_highest_preset_name()
-        } else {
-            encoder_config.get_fastest_preset_name()
+
+        let mut args = vec![
+            "-y".to_string(),
+            "-f".to_string(),
+            "rawvideo".to_string(),
+            "-pix_fmt".to_string(),
+            format!("{}", video_config.color_order).to_string(),
+            "-s".to_string(),
+            format!(
+                "{}x{}",
+                video_config.output_width, video_config.output_height
+            ),
+            "-r".to_string(),
+            format!("{}", video_config.framerate),
+            "-i".to_string(),
+            "-".to_string(),
+        ];
+        let encoder_option_builder = FFMPEGOutputOptionBuilder {
+            high_quality: high_profile,
+            encoder: encoder_config,
         };
-        let out_pixel_format = if high_profile {
-            encoder_config.get_highest_pixel_format()
-        } else {
-            encoder_config.get_fastest_pixel_format()
-        };
+        
+        encoder_option_builder.build_option(&mut args);
+
+        args.push(video_config.filename.to_string());
+
         let mut c = std::process::Command::new("ffmpeg")
-            .args([
-                "-y",
-                "-f",
-                "rawvideo",
-                "-pix_fmt",
-                &format!("{}", video_config.color_order),
-                "-s",
-                &format!(
-                    "{}x{}",
-                    video_config.output_width, video_config.output_height
-                ),
-                "-r",
-                &format!("{}", video_config.framerate),
-                "-i",
-                "-",
-                "-an",
-                "-vcodec",
-                &format!("{}", encoder_name),
-                "-preset",
-                &format!("{}", preset),
-                "-pix_fmt",
-                &format!("{}", out_pixel_format),
-                &format!("{}", video_config.filename),
-            ])
+            .args(args)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())

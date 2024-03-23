@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 nalgebra = "*"
 rusttype = "*"
-usvg = "*"
+usvg = "0.36.0"
 tiny-skia = "*"
 fern = "*"
 log = "*"
