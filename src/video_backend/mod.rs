@@ -175,9 +175,9 @@ impl FFMPEGOutputOptionBuilder {
         let mut quality_options = match self.encoder {
             FFMPEGEncoder::hevc_vaapi => {
                 if self.high_quality {
-                    vec!["-compression_level", "29", "-qp", "1"]
+                    vec!["-compression_level", "11"] // I can't use level value 1 and 29, and i don't know why.
                 } else {
-                    vec!["-compression_level", "0", "-qp", "52"]
+                    vec!["-compression_level", "0"]
                 }
             }
             FFMPEGEncoder::hevc_nvenc => {
