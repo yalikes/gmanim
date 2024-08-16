@@ -8,7 +8,9 @@ use crate::{
     Context, GMFloat, Scene,
 };
 
-trait Animation: Iterator<Item = Vec<u8>> {}
+trait Animation: Iterator<Item = Vec<u8>> {
+    fn total_frame(&self) -> u32;
+}
 
 pub struct AnimationConfig {
     pub total_frame: u32,
@@ -65,7 +67,11 @@ impl Iterator for SimpleMovement {
     }
 }
 
-impl Animation for SimpleMovement {}
+impl Animation for SimpleMovement {
+    fn total_frame(&self) -> u32 {
+        return self.animation_config.total_frame
+    }
+}
 
 impl SimpleMovement {
     pub fn new() {}
@@ -162,7 +168,11 @@ fn test_simple_move() {
     video_backend_controller.end();
 }
 
-impl Animation for SimpleRotate {}
+impl Animation for SimpleRotate {
+    fn total_frame(&self) -> u32 {
+        self.animation_config.total_frame
+    }
+}
 
 pub struct Wait {
     pub scene: Rc<RefCell<Scene>>,
@@ -191,7 +201,11 @@ impl Iterator for Wait {
     }
 }
 
-impl Animation for Wait {}
+impl Animation for Wait {
+    fn total_frame(&self) -> u32 {
+        self.animation_config.total_frame
+    }
+}
 
 #[test]
 fn test_simple_rotate() {
