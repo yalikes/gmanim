@@ -5,6 +5,8 @@ use crate::{
     Color, Context, ContextType, GMFloat,
 };
 
+pub mod constants;
+
 pub fn bezier_curve(point_list: &[Vector2<GMFloat>], t: GMFloat) -> Vector2<GMFloat> {
     if point_list.len() < 2 {
         panic!("bezier curve with fewer than two point");
