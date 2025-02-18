@@ -1,14 +1,29 @@
 #![allow(unused)]
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
+
+use mobjects::{coordinate_change_x, coordinate_change_y};
 
 pub mod animation;
+pub mod camera;
+pub mod log_utils;
 pub mod math_utils;
 pub mod mobjects;
 pub mod video_backend;
-pub mod log_utils;
-pub type GMFloat = f32;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "gmfloat_f16")]{
+        pub type GMFloat = f16;
+    }else if #[cfg(feature = "gmfloat_f32")]{
+        pub type GMFloat = f32;
+    }else if #[cfg(feature = "gmfloat_f64")]{
+        pub type GMFloat = f64;
+    }else{
+        pub type GMFloat = f32;
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct Color {
     r: u8,
@@ -100,6 +115,13 @@ impl Context {
             _ => &[],
         }
     }
+
+    pub fn convert_coord_x(&self, x: GMFloat) -> GMFloat {
+        coordinate_change_x(x, self.scene_config.width) * self.scene_config.scale_factor
+    }
+    pub fn convert_coord_y(&self, y: GMFloat) -> GMFloat {
+        coordinate_change_y(y, self.scene_config.height) * self.scene_config.scale_factor
+    }
 }
 
 #[derive(Default)]
@@ -129,7 +151,7 @@ impl Scene {
     pub fn add(&mut self, mobject: Box<dyn mobjects::Mobject>) {
         self.mobjects.push(Rc::new(RefCell::new(mobject)));
     }
-    pub fn add_ref(&mut self, mobject_ref: Rc<RefCell<Box<dyn mobjects::Mobject>>>){
+    pub fn add_ref(&mut self, mobject_ref: Rc<RefCell<Box<dyn mobjects::Mobject>>>) {
         self.mobjects.push(mobject_ref.clone());
     }
 }
@@ -222,7 +244,11 @@ fn write_frame() {
         color_order: ColorOrder::Rgba,
     };
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, video_backend::FFMPEGEncoder::hevc_nvenc, false)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(
+            &video_config,
+            video_backend::FFMPEGEncoder::hevc_nvenc,
+            false,
+        )),
     };
 
     for _ in 0..480 {
@@ -276,7 +302,11 @@ fn thread_frame_pass() {
     };
 
     let mut video_backend_var = VideoBackend {
-        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(&video_config, video_backend::FFMPEGEncoder::hevc_nvenc, false)),
+        backend_type: VideoBackendType::FFMPEG(FFMPEGBackend::new(
+            &video_config,
+            video_backend::FFMPEGEncoder::hevc_nvenc,
+            false,
+        )),
     };
 
     let (tx, rx) = channel::<video_backend::FrameMessage>();

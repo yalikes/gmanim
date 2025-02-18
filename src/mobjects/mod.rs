@@ -16,6 +16,7 @@ pub mod group;
 pub mod path;
 pub mod svg_shape;
 pub mod text;
+pub mod three_d_viewport;
 
 pub trait Transform {
     fn transform(&mut self, transform: nalgebra::Transform3<GMFloat>);
