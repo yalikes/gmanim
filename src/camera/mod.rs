@@ -36,7 +36,7 @@ impl Default for PerspectiveSetting {
         Self {
             near: 1.0,
             far: 2.0,
-            fovy: PI / 2,
+            fovy: PI / 2.0,
             aspect: 16.0 / 9.0,
         }
     }

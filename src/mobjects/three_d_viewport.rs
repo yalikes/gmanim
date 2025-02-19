@@ -63,8 +63,8 @@ impl Draw for ThreeDViewport {
             (self.vp_height * ctx.scene_config.scale_factor) as u32,
         );
         let target_pix_coord = (
-            ctx.convert_coord_y(self.position.x) as i32,
-            ctx.convert_coord_y(self.position.y) as i32,
+            ctx.scene_config.convert_coord_y(self.position.x) as i32,
+            ctx.scene_config.convert_coord_y(self.position.y) as i32,
         );
         if pixmap_size.0 == 0 {
             return;

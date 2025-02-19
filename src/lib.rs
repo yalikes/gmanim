@@ -5,8 +5,10 @@ use std::rc::Rc;
 
 use mobjects::{coordinate_change_x, coordinate_change_y};
 
-pub mod animation;
 pub mod camera;
+use nalgebra::Point3;
+
+pub mod animation;
 pub mod log_utils;
 pub mod math_utils;
 pub mod mobjects;
@@ -24,6 +26,7 @@ cfg_if::cfg_if! {
     }
 }
 
+pub type GMPoint = Point3<GMFloat>;
 #[derive(Clone, Copy, Debug)]
 struct Color {
     r: u8,
@@ -75,6 +78,15 @@ pub struct Context {
     pub scene_config: SceneConfig,
 }
 
+impl SceneConfig{
+    pub fn convert_coord_x(&self, x: GMFloat) -> GMFloat {
+        coordinate_change_x(x, self.width) * self.scale_factor
+    }
+    pub fn convert_coord_y(&self, y: GMFloat) -> GMFloat {
+        coordinate_change_y(y, self.height) * self.scale_factor
+    }
+}
+
 impl Default for SceneConfig {
     fn default() -> Self {
         SceneConfig {
@@ -116,12 +128,7 @@ impl Context {
         }
     }
 
-    pub fn convert_coord_x(&self, x: GMFloat) -> GMFloat {
-        coordinate_change_x(x, self.scene_config.width) * self.scene_config.scale_factor
-    }
-    pub fn convert_coord_y(&self, y: GMFloat) -> GMFloat {
-        coordinate_change_y(y, self.scene_config.height) * self.scene_config.scale_factor
-    }
+
 }
 
 #[derive(Default)]
